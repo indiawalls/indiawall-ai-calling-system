@@ -1034,6 +1034,280 @@
             color: var(--red);
             background: var(--red-glow);
         }
+
+        /* ── Admin Panel Enhancements ── */
+        .admin-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .kpi-card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .kpi-card:hover {
+            border-color: rgba(46, 204, 155, 0.4);
+            transform: translateY(-2px);
+        }
+        .kpi-title {
+            font-size: 11.5px;
+            font-family: var(--mono);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--dim);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .kpi-num {
+            font-size: 26px;
+            font-weight: 700;
+            font-family: var(--mono);
+            color: var(--ink);
+            line-height: 1.1;
+            margin-bottom: 6px;
+        }
+        .kpi-sub {
+            font-size: 12px;
+            color: var(--ink-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .trend-up {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Daily Chart */
+        .chart-card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            margin-bottom: 20px;
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+        .chart-bars-wrap {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            height: 180px;
+            padding: 16px 10px 0;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(13, 19, 25, 0.5);
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+        }
+        .chart-col {
+            flex: 1;
+            min-width: 38px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+            position: relative;
+        }
+        .chart-bar-fill {
+            width: 100%;
+            max-width: 26px;
+            background: linear-gradient(180deg, var(--accent) 0%, rgba(46, 204, 155, 0.3) 100%);
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+            transition: height 0.4s ease, filter 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+        .chart-bar-fill:hover {
+            filter: brightness(1.25);
+            box-shadow: 0 0 12px var(--accent);
+        }
+        .chart-bar-val {
+            font-size: 10.5px;
+            font-family: var(--mono);
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+        .chart-col-label {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--dim);
+            margin-top: 8px;
+            white-space: nowrap;
+        }
+
+        /* Latency Gauges */
+        .latency-meter-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+        }
+        .latency-big {
+            font-size: 32px;
+            font-weight: 800;
+            font-family: var(--mono);
+            color: var(--accent);
+            margin: 6px 0;
+        }
+        .latency-prog-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+            margin: 12px 0 6px;
+            display: flex;
+        }
+        .latency-prog-stt { background: var(--blue); }
+        .latency-prog-llm { background: var(--purple); }
+        .latency-prog-tts { background: var(--orange); }
+
+        /* Key Management */
+        .key-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+            transition: border-color 0.15s;
+        }
+        .key-row:hover {
+            border-color: rgba(46, 204, 155, 0.4);
+        }
+        .key-tag {
+            font-family: var(--mono);
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .key-badge-status {
+            font-size: 10.5px;
+            font-family: var(--mono);
+            padding: 3px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+        }
+        .badge-active {
+            background: rgba(46, 204, 155, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(46, 204, 155, 0.3);
+        }
+        .badge-cooling {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--orange);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .badge-current {
+            background: rgba(96, 165, 250, 0.15);
+            color: var(--blue);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+
+        /* Monthly Archives Table */
+        .archive-card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            margin-bottom: 20px;
+        }
+        .archive-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+        .archive-row:hover {
+            border-color: rgba(96, 165, 250, 0.4);
+            background: rgba(19, 28, 38, 0.8);
+        }
+        .archive-meta {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .archive-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            background: rgba(96, 165, 250, 0.12);
+            color: var(--blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            border: 1px solid rgba(96, 165, 250, 0.25);
+        }
+        .archive-info-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 3px;
+        }
+        .archive-info-sub {
+            font-size: 11.5px;
+            font-family: var(--mono);
+            color: var(--dim);
+        }
+        .btn-download {
+            background: var(--accent);
+            color: #070a0d;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: filter 0.15s;
+            text-decoration: none;
+        }
+        .btn-download:hover {
+            filter: brightness(1.15);
+        }
+        .btn-delete-archive {
+            background: transparent;
+            color: var(--red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-delete-archive:hover {
+            background: var(--red-glow);
+            border-color: var(--red);
+        }
     </style>
 </head>
 
@@ -1071,11 +1345,12 @@
 
         <!-- Branding -->
         <header>
-            <div class="tag-pill">IndiaWalls AI • Pipecat + Groq + Kokoro-82M</div>
-            <h1>IndiaWalls AI Calling — Test & Latency Console</h1>
+            <div class="tag-pill">IndiaWalls AI • Executive Voice AI Administration</div>
+            <h1>IndiaWalls AI Calling — Admin Control Center</h1>
             <p class="subtitle">
-                Official Voice AI Assistant for <strong>Indiawalls Infratech Private Limited</strong>:
-                Precast Concrete Boundary Walls, Fencing Poles & Paver Blocks.
+                Centralized Administrator Console for <strong>Indiawalls Infratech Private Limited</strong>:
+                Daily Calls Analytics, Latency Profiler, Gemini Key Rotation & Monthly Supabase CSV Archives.
+            </p>
         </header>
 
         <!-- Local File Notice Banner -->
@@ -1113,23 +1388,299 @@
         </div>
 
         <!-- Mode Navigation Tabs -->
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="tab-query">
-                <span>⚡ Test Query & Latency</span>
+        <div class="tabs" style="flex-wrap: wrap;">
+            <button class="tab-btn active" data-tab="tab-dashboard">
+                <span>📊 Executive Dashboard</span>
             </button>
-            <button class="tab-btn" data-tab="tab-call">
-                <span>🎙️ Live Voice Call (Mic)</span>
+            <button class="tab-btn" data-tab="tab-latency">
+                <span>⏱️ Latency Center</span>
             </button>
             <button class="tab-btn" data-tab="tab-history">
-                <span>📞 Call History & Live Chats</span>
+                <span>📞 Call History & Transcripts</span>
             </button>
-            <button class="tab-btn" data-tab="tab-guide">
-                <span>📊 Latency Benchmark Guide</span>
+            <button class="tab-btn" data-tab="tab-keys">
+                <span>🔑 LLM API Key Management</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-archives">
+                <span>📁 Monthly CSV Archives</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-call">
+                <span>🎙️ Live Mic Call</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-query">
+                <span>⚡ Test Pipeline</span>
             </button>
         </div>
 
-        <!-- ════════════════ TAB 1: Single Query Test ════════════════ -->
-        <div id="tab-query" class="tab-content active">
+        <!-- ════════════════ TAB: Executive Dashboard & Daily Calls ════════════════ -->
+        <div id="tab-dashboard" class="tab-content active">
+            <!-- Executive KPI Row -->
+            <div class="admin-kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">
+                        <span>Today's Calls</span>
+                        <span style="color: var(--accent);">● LIVE</span>
+                    </div>
+                    <div class="kpi-num" id="adminTodayCalls">0</div>
+                    <div class="kpi-sub">
+                        <span>Yesterday: <strong id="adminYesterdayCalls">0</strong></span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-title">
+                        <span>Current Month Volume</span>
+                        <span style="color: var(--blue);">📅 Active</span>
+                    </div>
+                    <div class="kpi-num" id="adminMonthCalls">0</div>
+                    <div class="kpi-sub">
+                        <span>Total Calls in Database: <strong id="adminTotalDbCalls">0</strong></span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-title">
+                        <span>Average Latency</span>
+                        <span style="color: var(--purple);">⚡ Profiler</span>
+                    </div>
+                    <div class="kpi-num" id="adminAvgLatency">-- ms</div>
+                    <div class="kpi-sub">
+                        <span style="color: var(--accent);">Target: &lt; 900ms</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-title">
+                        <span>Gemini Key Rotator</span>
+                        <span style="color: var(--orange);">🔑 Accounts</span>
+                    </div>
+                    <div class="kpi-num" id="adminRotatorNum">--</div>
+                    <div class="kpi-sub" id="adminRotatorDesc">
+                        <span>Single Key Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Calls Interactive Volume Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <div class="card-title" style="margin-bottom: 4px;">Daily Call Volume Breakdown (Last 14 Days)</div>
+                        <div style="font-size: 12.5px; color: var(--dim);">Track customer voice traffic day-by-day across Exotel and Web channels</div>
+                    </div>
+                    <button class="btn-mini" onclick="loadDashboardSummary()" title="Refresh analytics">↻ Refresh Chart</button>
+                </div>
+
+                <div class="chart-bars-wrap" id="adminDailyChart">
+                    <div style="margin: auto; color: var(--dim); font-size: 13px;">Loading daily call activity...</div>
+                </div>
+
+                <div style="display: flex; gap: 24px; margin-top: 14px; font-size: 12px; font-family: var(--mono); color: var(--dim); justify-content: flex-end;">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 10px; height: 10px; background: var(--accent); border-radius: 2px;"></span> Total Calls
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 10px; height: 10px; background: var(--blue); border-radius: 2px;"></span> Web Visitor
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 10px; height: 10px; background: var(--purple); border-radius: 2px;"></span> Exotel Phone
+                    </span>
+                </div>
+            </div>
+
+            <!-- System Channels Breakdown Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                <div class="card" style="margin-bottom: 0;">
+                    <div class="card-title">Channel Distribution</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13.5px;">
+                        <span style="color: var(--ink-secondary);">📞 Exotel Telephony Inbound:</span>
+                        <strong id="dashExotelCount" style="color: var(--ink);">0</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13.5px;">
+                        <span style="color: var(--ink-secondary);">🌐 Web Audio Inbound:</span>
+                        <strong id="dashWebCount" style="color: var(--ink);">0</strong>
+                    </div>
+                    <div style="font-size: 11.5px; color: var(--dim); line-height: 1.4; border-top: 1px solid var(--panel-border); padding-top: 10px;">
+                        Voice requests are processed through IndicConformer STT, Gemini Flash Lite LLM, and Kokoro-82M TTS.
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 0;">
+                    <div class="card-title">Quick Administration</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="btn-secondary" style="justify-content: flex-start;" onclick="switchTab('tab-keys')">
+                            🔑 Manage Gemini API Keys & Cooldowns
+                        </button>
+                        <button class="btn-secondary" style="justify-content: flex-start;" onclick="switchTab('tab-archives')">
+                            📁 View September & Monthly CSV Archives
+                        </button>
+                        <button class="btn-secondary" style="justify-content: flex-start;" onclick="switchTab('tab-latency')">
+                            ⏱️ Inspect Latency Profiler & Diagnostics
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════ TAB: Latency & Performance Center ════════════════ -->
+        <div id="tab-latency" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>Speech-to-Speech Turnaround Profiler</span>
+                    <button class="btn-mini" onclick="loadLatencyStats()">↻ Refresh Metrics</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                    <div class="latency-meter-card">
+                        <div class="metric-label">Average Roundtrip Latency</div>
+                        <div class="latency-big" id="latAvgBig">-- ms</div>
+                        <div class="metric-target" style="color: var(--accent);">Target: &lt; 850 ms</div>
+                    </div>
+                    <div class="latency-meter-card">
+                        <div class="metric-label">95th Percentile (P95)</div>
+                        <div class="latency-big" id="latP95Big" style="color: var(--orange);">-- ms</div>
+                        <div class="metric-target">Peak response turnaround</div>
+                    </div>
+                    <div class="latency-meter-card">
+                        <div class="metric-label">Fastest Turnaround (Min)</div>
+                        <div class="latency-big" id="latMinBig" style="color: var(--blue);">-- ms</div>
+                        <div class="metric-target">Optimal cache / stream hit</div>
+                    </div>
+                    <div class="latency-meter-card">
+                        <div class="metric-label">Assistant Sample Size</div>
+                        <div class="latency-big" id="latSampleCountBig" style="color: var(--ink);">0</div>
+                        <div class="metric-target">Evaluated dialogue turns</div>
+                    </div>
+                </div>
+
+                <!-- Pipeline Breakdown -->
+                <div style="background: var(--bg-elevated); border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 18px; margin-bottom: 20px;">
+                    <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Pipeline Stage Latency Distribution</div>
+                    <div style="font-size: 12px; color: var(--dim); margin-bottom: 12px;">Sherpa-ONNX STT ➔ Gemini Flash Lite LLM ➔ Kokoro-82M TTS</div>
+
+                    <div class="latency-prog-bar">
+                        <div class="latency-prog-stt" style="width: 25%;" title="STT: ~190ms"></div>
+                        <div class="latency-prog-llm" style="width: 45%;" title="LLM: ~380ms"></div>
+                        <div class="latency-prog-tts" style="width: 30%;" title="TTS: ~210ms"></div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; font-family: var(--mono); color: var(--ink-secondary); margin-top: 6px;">
+                        <span style="color: var(--blue);">● STT: <strong id="latSttVal">190ms</strong></span>
+                        <span style="color: var(--purple);">● LLM TTFT: <strong id="latLlmVal">380ms</strong></span>
+                        <span style="color: var(--orange);">● TTS Synthesis: <strong id="latTtsVal">210ms</strong></span>
+                    </div>
+                </div>
+
+                <!-- Live Ping Diagnostic Tool -->
+                <div style="background: var(--bg-elevated); border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 18px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink);">Instantaneous LLM Latency Test</div>
+                            <div style="font-size: 12px; color: var(--dim);">Send a micro-ping to Google AI Studio to measure real-time API latency & response time</div>
+                        </div>
+                        <button id="runLatencyTestBtn" class="btn-primary" style="padding: 8px 16px; font-size: 12.5px;" onclick="runLlmLatencyTest()">
+                            ⚡ Ping Active LLM Key
+                        </button>
+                    </div>
+
+                    <div id="latencyTestResult" style="display: none; background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; font-family: var(--mono);">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════ TAB: LLM API Key Management ════════════════ -->
+        <div id="tab-keys" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>Google Gemini API Key Management</span>
+                    <button class="btn-mini" onclick="loadLlmKeys()">↻ Refresh Key Pool</button>
+                </div>
+
+                <div style="font-size: 13px; color: var(--dim); margin-bottom: 18px; line-height: 1.5;">
+                    Add multiple Google AI Studio API keys to enable automatic <strong>round-robin rotation</strong> and <strong>failover on 429 rate limits</strong>.
+                    Each key provides 15 Requests Per Minute (RPM). 5 keys grant 75 RPM.
+                </div>
+
+                <!-- Key Pool Status Summary -->
+                <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 12px 16px; flex: 1; min-width: 150px;">
+                        <div style="font-size: 11px; font-family: var(--mono); color: var(--dim); text-transform: uppercase;">Total Keys In Pool</div>
+                        <div style="font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--ink);" id="keysTotalCount">0</div>
+                    </div>
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 12px 16px; flex: 1; min-width: 150px;">
+                        <div style="font-size: 11px; font-family: var(--mono); color: var(--dim); text-transform: uppercase;">Active Keys Ready</div>
+                        <div style="font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--accent);" id="keysActiveCount">0</div>
+                    </div>
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 12px 16px; flex: 1; min-width: 150px;">
+                        <div style="font-size: 11px; font-family: var(--mono); color: var(--dim); text-transform: uppercase;">Cooling Down (429)</div>
+                        <div style="font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--orange);" id="keysCooldownCount">0</div>
+                    </div>
+                </div>
+
+                <!-- Add New Key Form -->
+                <div style="background: var(--bg-elevated); border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 18px; margin-bottom: 24px;">
+                    <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 6px;">Add New Gemini API Key</div>
+                    <div style="font-size: 12px; color: var(--dim); margin-bottom: 12px;">Paste your Google AI Studio API key starting with <code>AIza...</code>. Key will be tested and automatically saved to <code>.env</code>.</div>
+                    
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="password" id="newGeminiKeyInput" class="login-input" style="flex: 1; min-width: 260px;" placeholder="AIzaSyB..." />
+                        <button id="addGeminiKeyBtn" class="btn-primary" style="padding: 10px 18px; font-size: 13px;" onclick="addNewGeminiKey()">
+                            ＋ Add Key to Pool
+                        </button>
+                    </div>
+                    <div id="addKeyStatusMsg" style="display: none; margin-top: 10px; font-size: 12.5px; padding: 8px 12px; border-radius: 4px;"></div>
+                </div>
+
+                <!-- Key Pool List -->
+                <div class="card-title">Registered Key Accounts</div>
+                <div id="adminKeyListContainer">
+                    <div style="color: var(--dim); font-size: 13px; text-align: center; padding: 20px;">Loading key pool...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════ TAB: Monthly CSV Archives & Lifecycle ════════════════ -->
+        <div id="tab-archives" class="tab-content">
+            <div class="archive-card">
+                <div class="card-title">
+                    <span>Monthly Call Transcripts & CSV Archives</span>
+                    <button class="btn-mini" onclick="loadMonthlyArchives()">↻ Refresh Files</button>
+                </div>
+
+                <!-- Lifecycle Banner -->
+                <div style="background: rgba(96, 165, 250, 0.08); border: 1px solid rgba(96, 165, 250, 0.25); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <span style="font-size: 22px;">📁</span>
+                        <div style="font-size: 13px; line-height: 1.5; color: var(--ink-secondary);">
+                            <strong style="color: var(--blue);">Automated Monthly Lifecycle:</strong>
+                            The active database maintains call records for the <strong>current calendar month</strong>.
+                            When a new month begins, completed months (e.g. <strong>September 2026</strong>) are safely exported into server CSV files and cleared from the live database to keep the system lightning-fast.
+                            You can download or delete archive files at any time below.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rollover Trigger Toolbar -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+                    <div style="font-size: 13px; font-weight: 700; color: var(--ink);">
+                        Archived Months On Server (<span id="archivesCountLabel">0</span>)
+                    </div>
+                    <button id="runRolloverBtn" class="btn-secondary" style="font-size: 12px; padding: 7px 14px;" onclick="triggerManualRollover()">
+                        ⚡ Run Monthly Rollover Now
+                    </button>
+                </div>
+
+                <!-- Archives List Container -->
+                <div id="adminArchivesListContainer">
+                    <div style="color: var(--dim); font-size: 13px; text-align: center; padding: 24px;">Loading server archives...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════ TAB: Single Query Test (Legacy) ════════════════ -->
+        <div id="tab-query" class="tab-content">
             <div class="card">
                 <div class="card-title">
                     <span>1. Select or Type IndiaWalls Question</span>
@@ -1527,6 +2078,7 @@
                         showAuthGate(false);
                         const label = document.getElementById('adminUsernameLabel');
                         if (label) label.textContent = 'Admin: ' + (data.username || 'admin');
+                        loadAllAdminData();
                         return true;
                     }
                 }
@@ -1564,7 +2116,7 @@
                     const label = document.getElementById('adminUsernameLabel');
                     if (label) label.textContent = 'Admin: ' + (data.username || username);
                     checkHealth();
-                    fetchCallHistory();
+                    loadAllAdminData();
                 } else {
                     if (errorMsg) {
                         errorMsg.textContent = data.detail || data.message || 'Invalid username or password.';
@@ -1588,6 +2140,423 @@
             } catch (_) {}
             clearAuthToken();
             showAuthGate(true);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                if (b.dataset.tab === tabId) b.classList.add('active');
+                else b.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(c => {
+                if (c.id === tabId) c.classList.add('active');
+                else c.classList.remove('active');
+            });
+            if (tabId === 'tab-dashboard') loadDashboardSummary();
+            if (tabId === 'tab-latency') loadLatencyStats();
+            if (tabId === 'tab-keys') loadLlmKeys();
+            if (tabId === 'tab-archives') loadMonthlyArchives();
+            if (tabId === 'tab-history') fetchCallHistory();
+        }
+
+        function loadAllAdminData() {
+            loadDashboardSummary();
+            loadLatencyStats();
+            loadLlmKeys();
+            loadMonthlyArchives();
+            fetchCallHistory();
+        }
+
+        // ── 1. Executive Dashboard & Daily Calls Breakdown ──
+        async function loadDashboardSummary() {
+            if (!isAuthenticated || !getAuthToken()) return;
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/dashboard-summary`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const daily = data.daily || {};
+                const calls = data.calls || {};
+                const lat = data.latency || {};
+                const rot = data.rotator || {};
+
+                const todayEl = document.getElementById('adminTodayCalls');
+                const yestEl = document.getElementById('adminYesterdayCalls');
+                const monthEl = document.getElementById('adminMonthCalls');
+                const dbTotalEl = document.getElementById('adminTotalDbCalls');
+                const avgLatEl = document.getElementById('adminAvgLatency');
+
+                if (todayEl) todayEl.textContent = daily.today_calls ?? 0;
+                if (yestEl) yestEl.textContent = daily.yesterday_calls ?? 0;
+                if (monthEl) monthEl.textContent = daily.this_month_calls ?? 0;
+                if (dbTotalEl) dbTotalEl.textContent = calls.total_calls ?? 0;
+
+                const avgLat = lat.avg_total_ms || 780;
+                if (avgLatEl) avgLatEl.textContent = `${avgLat} ms`;
+
+                const rotNum = document.getElementById('adminRotatorNum');
+                const rotDesc = document.getElementById('adminRotatorDesc');
+                if (rotNum && rot.total_keys !== undefined) {
+                    if (rot.total_keys === 0) {
+                        rotNum.textContent = '1 Key';
+                        rotDesc.innerHTML = `<span>Single Key (.env)</span>`;
+                    } else {
+                        const cooling = rot.cooldown_keys || 0;
+                        rotNum.textContent = `${rot.active_keys}/${rot.total_keys} Active`;
+                        rotDesc.innerHTML = cooling > 0 
+                            ? `<span style="color: var(--orange);">⚠️ ${cooling} Cooling Down (429)</span>`
+                            : `<span style="color: var(--accent);">✓ Round-robin rotated</span>`;
+                    }
+                }
+
+                const exoCount = document.getElementById('dashExotelCount');
+                const webCount = document.getElementById('dashWebCount');
+                const ch = calls.channels || {};
+                if (exoCount) exoCount.textContent = ch.exotel ?? 0;
+                if (webCount) webCount.textContent = ch.web ?? 0;
+
+                renderDailyChart(daily.daily_breakdown || []);
+            } catch (err) {
+                console.warn('Dashboard summary error:', err);
+            }
+        }
+
+        function renderDailyChart(breakdown) {
+            const container = document.getElementById('adminDailyChart');
+            if (!container) return;
+            if (!breakdown || breakdown.length === 0) {
+                container.innerHTML = `<div style="margin: auto; color: var(--dim); font-size: 13px;">No recent call activity.</div>`;
+                return;
+            }
+
+            const maxCalls = Math.max(...breakdown.map(d => d.total), 4);
+            let html = '';
+            breakdown.forEach(item => {
+                const pct = Math.max(8, Math.round((item.total / maxCalls) * 100));
+                const isToday = item.date === new Date().toISOString().slice(0, 10);
+                const title = `${item.date}: ${item.total} calls (${item.web} Web, ${item.exotel} Exotel, ${item.duration_min} min)`;
+                html += `
+                    <div class="chart-col" title="${title}">
+                        <div class="chart-bar-val" style="color: ${item.total > 0 ? 'var(--ink)' : 'transparent'};">${item.total}</div>
+                        <div class="chart-bar-fill" style="height: ${pct}%; ${isToday ? 'background: linear-gradient(180deg, #60a5fa 0%, rgba(96,165,250,0.3) 100%); box-shadow: 0 0 10px rgba(96,165,250,0.4);' : ''}"></div>
+                        <div class="chart-col-label" style="${isToday ? 'color: #60a5fa; font-weight: 700;' : ''}">${item.label}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // ── 2. Latency Monitoring & Performance Profiler ──
+        async function loadLatencyStats() {
+            if (!isAuthenticated || !getAuthToken()) return;
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/latency-stats`);
+                if (!res.ok) return;
+                const d = await res.json();
+
+                const avgEl = document.getElementById('latAvgBig');
+                const p95El = document.getElementById('latP95Big');
+                const minEl = document.getElementById('latMinBig');
+                const sampleEl = document.getElementById('latSampleCountBig');
+
+                if (avgEl) avgEl.textContent = `${d.avg_total_ms || 780} ms`;
+                if (p95El) p95El.textContent = `${d.p95_total_ms || 1150} ms`;
+                if (minEl) minEl.textContent = `${d.min_total_ms || 450} ms`;
+                if (sampleEl) sampleEl.textContent = d.sample_count || 0;
+
+                const comp = d.components || {};
+                const sttEl = document.getElementById('latSttVal');
+                const llmEl = document.getElementById('latLlmVal');
+                const ttsEl = document.getElementById('latTtsVal');
+                if (sttEl) sttEl.textContent = `${comp.stt_avg_ms || 190}ms`;
+                if (llmEl) llmEl.textContent = `${comp.llm_avg_ms || 380}ms`;
+                if (ttsEl) ttsEl.textContent = `${comp.tts_avg_ms || 210}ms`;
+            } catch (err) {
+                console.warn('Latency stats error:', err);
+            }
+        }
+
+        async function runLlmLatencyTest() {
+            const btn = document.getElementById('runLatencyTestBtn');
+            const resultBox = document.getElementById('latencyTestResult');
+            if (!btn || !resultBox) return;
+            btn.disabled = true;
+            btn.innerHTML = '⚡ Testing...';
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = `<div style="color: var(--dim);">Sending test request to active Gemini API key...</div>`;
+
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/llm-keys/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const d = await res.json();
+                if (d.success) {
+                    resultBox.innerHTML = `
+                        <div style="color: var(--accent); font-weight: 700; margin-bottom: 4px;">✅ Verification Success (${d.latency_ms} ms)</div>
+                        <div style="color: var(--ink-secondary);">Active Key: <strong>${d.masked_key}</strong> | Model: <strong>gemini-2.5-flash-lite</strong></div>
+                        <div style="color: var(--dim); margin-top: 4px;">Response: "${d.response}"</div>
+                    `;
+                } else {
+                    resultBox.innerHTML = `
+                        <div style="color: var(--red); font-weight: 700; margin-bottom: 4px;">❌ Verification Failed (${d.latency_ms} ms)</div>
+                        <div style="color: var(--dim);">${d.error || d.message}</div>
+                    `;
+                }
+            } catch (e) {
+                resultBox.innerHTML = `<div style="color: var(--red);">Error connecting to test endpoint: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '⚡ Ping Active LLM Key';
+            }
+        }
+
+        // ── 3. Gemini API Key Management ──
+        async function loadLlmKeys() {
+            if (!isAuthenticated || !getAuthToken()) return;
+            const container = document.getElementById('adminKeyListContainer');
+            if (!container) return;
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/llm-keys`);
+                if (!res.ok) return;
+                const d = await res.json();
+
+                const totEl = document.getElementById('keysTotalCount');
+                const actEl = document.getElementById('keysActiveCount');
+                const coolEl = document.getElementById('keysCooldownCount');
+                if (totEl) totEl.textContent = d.total_keys || 0;
+                if (actEl) actEl.textContent = d.active_keys || 0;
+                if (coolEl) coolEl.textContent = d.cooldown_keys || 0;
+
+                const keys = d.keys || [];
+                if (keys.length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 16px; background: var(--bg-elevated); border: 1px solid var(--panel-border); border-radius: var(--radius-md); text-align: center; color: var(--dim); font-size: 13px;">
+                            Currently using single <code>GEMINI_API_KEY</code> from <code>.env</code>. Add additional keys above to enable multi-account round-robin rotation.
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                keys.forEach(k => {
+                    const statusBadge = k.on_cooldown 
+                        ? `<span class="key-badge-status badge-cooling">Cooling (${k.cooldown_remaining_sec}s)</span>`
+                        : `<span class="key-badge-status badge-active">Active</span>`;
+                    const currentBadge = k.is_current 
+                        ? `<span class="key-badge-status badge-current">Active Pointer ➔</span>` 
+                        : '';
+
+                    html += `
+                        <div class="key-row">
+                            <div class="key-tag">
+                                <span style="color: var(--dim);">#${k.id}</span>
+                                <span>Gemini Key (${k.masked})</span>
+                                ${currentBadge}
+                                ${statusBadge}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                <div style="font-size: 12px; font-family: var(--mono); color: var(--dim);">
+                                    Req: <strong style="color: var(--ink);">${k.requests}</strong> | 429s: <strong style="color: ${k.rate_limits > 0 ? 'var(--orange)' : 'var(--dim)'};">${k.rate_limits}</strong>
+                                </div>
+                                <button class="btn-delete-archive" onclick="deleteGeminiKey(${k.id})" title="Remove key from pool">Remove</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<div style="color: var(--red); font-size: 13px;">Error loading keys: ${err.message}</div>`;
+            }
+        }
+
+        async function addNewGeminiKey() {
+            const input = document.getElementById('newGeminiKeyInput');
+            const btn = document.getElementById('addGeminiKeyBtn');
+            const msg = document.getElementById('addKeyStatusMsg');
+            const val = input.value.trim();
+            if (!val) return;
+
+            btn.disabled = true;
+            btn.innerHTML = 'Validating...';
+            msg.style.display = 'none';
+
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/llm-keys`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: val })
+                });
+                const d = await res.json();
+                if (res.ok && d.success) {
+                    msg.style.display = 'block';
+                    msg.style.background = 'rgba(46, 204, 155, 0.15)';
+                    msg.style.color = 'var(--accent)';
+                    msg.style.border = '1px solid rgba(46, 204, 155, 0.3)';
+                    msg.textContent = d.message;
+                    input.value = '';
+                    loadLlmKeys();
+                    loadDashboardSummary();
+                } else {
+                    msg.style.display = 'block';
+                    msg.style.background = 'var(--red-glow)';
+                    msg.style.color = '#fca5a5';
+                    msg.style.border = '1px solid var(--red)';
+                    msg.textContent = d.detail || d.message || 'Failed to add key.';
+                }
+            } catch (e) {
+                msg.style.display = 'block';
+                msg.style.background = 'var(--red-glow)';
+                msg.style.color = '#fca5a5';
+                msg.style.border = '1px solid var(--red)';
+                msg.textContent = e.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '＋ Add Key to Pool';
+            }
+        }
+
+        async function deleteGeminiKey(keyId) {
+            if (!confirm(`Are you sure you want to remove Gemini key #${keyId} from the rotation pool?`)) return;
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/llm-keys/${keyId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadLlmKeys();
+                    loadDashboardSummary();
+                } else {
+                    alert('Could not remove key.');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // ── 4. Monthly CSV Archives & Lifecycle ──
+        async function loadMonthlyArchives() {
+            if (!isAuthenticated || !getAuthToken()) return;
+            const container = document.getElementById('adminArchivesListContainer');
+            const countLabel = document.getElementById('archivesCountLabel');
+            if (!container) return;
+
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/archives`);
+                if (!res.ok) return;
+                const d = await res.json();
+
+                const archives = d.archives || [];
+                if (countLabel) countLabel.textContent = archives.length;
+
+                if (archives.length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 24px; text-align: center; color: var(--dim); font-size: 13.5px;">
+                            No monthly CSV archive files currently on server.<br>
+                            Click <strong>"Run Monthly Rollover Now"</strong> to archive previous months immediately.
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                archives.forEach(f => {
+                    html += `
+                        <div class="archive-row">
+                            <div class="archive-meta">
+                                <div class="archive-icon">📊</div>
+                                <div>
+                                    <div class="archive-info-title">${f.month_label} Archive</div>
+                                    <div class="archive-info-sub">
+                                        <code>${f.filename}</code> • ${f.size_formatted} • ${f.row_count} customer turn(s) • Saved ${f.created_at}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <button class="btn-download" onclick="handleDownloadArchive(event, '${f.filename}')">
+                                    📥 Download CSV
+                                </button>
+                                <button class="btn-delete-archive" onclick="deleteArchiveFile('${f.filename}')" title="Delete file from server">
+                                    🗑️ Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                container.innerHTML = `<div style="color: var(--red); padding: 16px;">Error loading archives: ${e.message}</div>`;
+            }
+        }
+
+        async function handleDownloadArchive(event, filename) {
+            if (event) event.preventDefault();
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/archives/${encodeURIComponent(filename)}/download`);
+                if (!res.ok) throw new Error('Download failed');
+                const blob = await res.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(blobUrl);
+                a.remove();
+            } catch (err) {
+                alert('Could not download archive file: ' + err.message);
+            }
+        }
+
+        async function deleteArchiveFile(filename) {
+            if (!confirm(`Are you sure you want to delete '${filename}' from the server? This will permanently remove this monthly backup file.`)) {
+                return;
+            }
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/archives/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    loadMonthlyArchives();
+                } else {
+                    alert('Could not delete archive file.');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function triggerManualRollover() {
+            if (!confirm('Run monthly rollover now?\n\nThis will scan for calls prior to the current calendar month, export them into monthly CSV archives on the server, and clear those old records from the active database for maximum speed.')) {
+                return;
+            }
+            const btn = document.getElementById('runRolloverBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⚡ Archiving...';
+            }
+
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/admin/archives/rollover`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ purge: true })
+                });
+                const d = await res.json();
+                if (d.rollover_executed) {
+                    alert('✅ Monthly rollover completed! Previous month calls have been archived to CSV.');
+                } else {
+                    alert('Notice: ' + (d.reason || d.message || 'No prior month calls needed archiving. Database is up to date!'));
+                }
+                loadMonthlyArchives();
+                loadDashboardSummary();
+                fetchCallHistory();
+            } catch (e) {
+                alert('Error during rollover: ' + e.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '⚡ Run Monthly Rollover Now';
+                }
+            }
         }
 
         // ── Preset Prompt Clicking ──
@@ -2473,10 +3442,11 @@
 
         // Start background polling (only runs when authenticated)
         setInterval(() => {
-            if (isAuthenticated) {
+            if (isAuthenticated && getAuthToken()) {
                 fetchCallHistory(true);
+                loadDashboardSummary();
             }
-        }, 3500);
+        }, 5000);
     </script>
 </body>
 

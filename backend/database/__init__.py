@@ -10,6 +10,8 @@ from .repository import (
     end_call,
     get_call_details,
     get_call_stats,
+    get_daily_call_stats,
+    get_latency_analytics,
     get_calls_history,
     init_db,
     update_call_caller_id,
@@ -32,6 +34,8 @@ __all__ = [
     "get_calls_history",
     "get_call_details",
     "get_call_stats",
+    "get_daily_call_stats",
+    "get_latency_analytics",
     "delete_call",
     "clear_calls_db",
 ]

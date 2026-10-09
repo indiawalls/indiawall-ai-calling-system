@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 import numpy as np
 import torch
 
-from backend.api import auth_router, calls_router, system_router, websockets_router
+from backend.api import admin_router, auth_router, calls_router, system_router, websockets_router
 from backend.config import (
     GEMINI_MODEL,
     KOKORO_MODE,
@@ -111,6 +111,15 @@ async def lifespan(app: FastAPI):
         await loop.run_in_executor(None, _prewarm_gemini)
         logger.info("Gemini LLM connection pool pre-warmed & ready.")
 
+    # 5. Check and run automated monthly rollover for prior months
+    try:
+        from backend.services.archive_service import check_and_run_monthly_rollover
+        rollover_result = check_and_run_monthly_rollover()
+        if rollover_result.get("rollover_executed"):
+            logger.info(f"Automated monthly rollover archived previous months: {rollover_result.get('archived_months')}")
+    except Exception as e:
+        logger.warning(f"Monthly archive rollover notice: {e}")
+
     yield
 
 
@@ -133,6 +142,7 @@ def create_app() -> FastAPI:
     )
 
     # Include all modular routers
+    app.include_router(admin_router)
     app.include_router(auth_router)
     app.include_router(calls_router)
     app.include_router(system_router)

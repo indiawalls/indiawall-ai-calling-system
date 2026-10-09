@@ -21,11 +21,14 @@ models/indicconformer-hi/
 models/*
 !models/.gitkeep
 
-# Local Databases & Logs
+# Local Databases & Logs & Archives
 *.db
 *.sqlite3
 debug_audio/
 *.log
+archives/
+!archives/.gitkeep
+*.csv
 
 # IDE & OS files
 .vscode/

@@ -129,6 +129,68 @@ class GeminiKeyRotator:
                 "keys": key_details,
             }
 
+    def add_key(self, new_key: str, persist: bool = True) -> bool:
+        """Add a new Gemini API key dynamically into the rotation pool."""
+        clean_key = new_key.strip()
+        if not clean_key or len(clean_key) < 10:
+            return False
+
+        with self._lock:
+            if clean_key in self._keys:
+                return True  # Already present
+            self._keys.append(clean_key)
+            self._stats[clean_key] = {"requests": 0, "errors": 0, "rate_limits": 0}
+            logger.info(f"Added new Gemini key ...{clean_key[-6:]} to rotator. Total keys: {len(self._keys)}")
+
+        if persist:
+            self._persist_keys_to_env()
+        return True
+
+    def remove_key(self, key_id: int, persist: bool = True) -> bool:
+        """Remove a key by its 1-indexed ID."""
+        with self._lock:
+            idx = key_id - 1
+            if 0 <= idx < len(self._keys):
+                removed = self._keys.pop(idx)
+                self._cooldowns.pop(removed, None)
+                self._stats.pop(removed, None)
+                if self._keys:
+                    self._index = self._index % len(self._keys)
+                else:
+                    self._index = 0
+                logger.info(f"Removed Gemini key ...{removed[-6:]}. Remaining keys: {len(self._keys)}")
+            else:
+                return False
+
+        if persist:
+            self._persist_keys_to_env()
+        return True
+
+    def _persist_keys_to_env(self):
+        """Persist current key pool to .env so keys survive restarts."""
+        try:
+            from backend.config import ROOT_DIR
+            env_files = [ROOT_DIR / ".env", ROOT_DIR / "backend" / ".env"]
+            keys_str = ",".join(self._keys)
+            
+            for env_path in env_files:
+                if not env_path.exists():
+                    continue
+                content = env_path.read_text(encoding="utf-8")
+                # Replace GEMINI_API_KEYS if present
+                if "GEMINI_API_KEYS=" in content:
+                    content = re.sub(r"GEMINI_API_KEYS=.*", f"GEMINI_API_KEYS={keys_str}", content)
+                elif "GEMINI_API_KEY=" in content:
+                    # Update or replace
+                    content = re.sub(r"GEMINI_API_KEY=.*", f"GEMINI_API_KEY={self._keys[0] if self._keys else ''}\nGEMINI_API_KEYS={keys_str}", content)
+                else:
+                    content += f"\nGEMINI_API_KEYS={keys_str}\n"
+                env_path.write_text(content, encoding="utf-8")
+            logger.info("Persisted updated Gemini keys to .env file.")
+        except Exception as e:
+            logger.warning(f"Could not persist keys to .env: {e}")
+
 
 # Singleton instance shared across the application
 gemini_rotator = GeminiKeyRotator()
+
