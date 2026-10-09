@@ -1,0 +1,15 @@
+pipecat-ai[google,groq,silero,websocket]
+google-genai
+kokoro>=0.9.4
+soundfile
+python-dotenv
+fastapi
+python-multipart
+uvicorn[standard]
+aiohttp
+sherpa-onnx
+huggingface-hub
+numpy
+supabase>=2.32.0
+psycopg2-binary>=2.9.9
+

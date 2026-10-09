@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hindi AI Calling — Live Testing & Latency Console</title>
+    <meta name="description" content="Hindi Speech-to-Speech AI Calling testing console with Groq and Kokoro-82M TTS" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #090D10;
+            --bg-elevated: #0F161C;
+            --panel: #151F27;
+            --panel-border: #202D38;
+            --panel-hover: #1A2732;
+            --ink: #ECF2F7;
+            --ink-secondary: #9DB0C2;
+            --dim: #60758A;
+            --accent: #2ECC9B;
+            --accent-glow: rgba(46, 204, 155, 0.15);
+            --accent-dim: #1B7A5D;
+            --blue: #3E8BFF;
+            --blue-glow: rgba(62, 139, 255, 0.15);
+            --orange: #F59E0B;
+            --orange-glow: rgba(245, 158, 11, 0.15);
+            --red: #EF4444;
+            --red-glow: rgba(239, 68, 68, 0.15);
+            --purple: #A855F7;
+            --mono: "JetBrains Mono", monospace;
+            --sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--sans);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 16px 80px;
+            line-height: 1.5;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 820px;
+        }
+
+        /* ── Top Bar / Branding ── */
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-glow);
+            border: 1px solid rgba(46, 204, 155, 0.25);
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+
+        .tag-pill::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: var(--dim);
+            font-size: 13.5px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ── Services Health Banner ── */
+        .health-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            padding: 10px 16px;
+            margin-bottom: 18px;
+            font-size: 12px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .health-items {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .service-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            color: var(--ink-secondary);
+        }
+
+        .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4A5568;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+
+        .indicator.online {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .indicator.offline {
+            background: var(--red);
+            box-shadow: 0 0 8px var(--red);
+        }
+
+        .indicator.warn {
+            background: var(--orange);
+            box-shadow: 0 0 8px var(--orange);
+        }
+
+        .btn-mini {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            color: var(--dim);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: var(--mono);
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .btn-mini:hover {
+            color: var(--ink);
+            border-color: var(--ink-secondary);
+        }
+
+        /* ── Tab Switcher ── */
+        .tabs {
+            display: flex;
+            background: var(--bg-elevated);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--panel-border);
+            margin-bottom: 18px;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            color: var(--dim);
+            font-family: var(--sans);
+            font-size: 13.5px;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--panel);
+            color: var(--ink);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: var(--ink-secondary);
+        }
+
+        /* ── Main Panels ── */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 12px;
+            font-family: var(--mono);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--dim);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* ── Live Call Tab ── */
+        .call-hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 10px 12px;
+            gap: 16px;
+        }
+
+        .visualizer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 36px;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+
+        .visualizer.active {
+            opacity: 1;
+        }
+
+        .vbar {
+            width: 3px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--accent);
+            transition: height 0.06s ease;
+        }
+
+        .call-circle-btn {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #2EA882 0%, #2ECC9B 100%);
+            color: #032419;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 24px rgba(46, 204, 155, 0.3);
+            transition: transform 0.15s, box-shadow 0.2s, background 0.3s;
+            outline: none;
+        }
+
+        .call-circle-btn:hover {
+            transform: scale(1.06);
+            box-shadow: 0 8px 30px rgba(46, 204, 155, 0.45);
+        }
+
+        .call-circle-btn.in-call {
+            background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
+            color: #FFFFFF;
+            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.35);
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .call-circle-btn svg {
+            width: 32px;
+            height: 32px;
+            fill: currentColor;
+        }
+
+        .call-status-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink-secondary);
+        }
+
+        .call-desc {
+            font-size: 12.5px;
+            color: var(--dim);
+            text-align: center;
+            max-width: 420px;
+        }
+
+        /* ── Conversation Stream ── */
+        .transcript-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .transcript-box::-webkit-scrollbar { width: 4px; }
+        .transcript-box::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+        .chat-bubble {
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            max-width: 85%;
+            line-height: 1.5;
+            animation: slideIn 0.2s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: #172D3A;
+            border: 1px solid #234559;
+            color: #D3E4F0;
+        }
+
+        .chat-bubble.ai {
+            align-self: flex-start;
+            background: #192730;
+            border: 1px solid var(--panel-border);
+            color: var(--ink);
+        }
+
+        .chat-bubble .speaker {
+            display: block;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+            color: var(--dim);
+        }
+
+        .chat-bubble.ai .speaker { color: var(--accent); }
+
+        .empty-placeholder {
+            text-align: center;
+            padding: 24px 0;
+            color: var(--dim);
+            font-size: 13px;
+        }
+
+        /* ── Test Query Tab ── */
+        .prompt-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .preset-btn {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            color: var(--ink-secondary);
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent);
+            color: var(--ink);
+            background: var(--panel-hover);
+        }
+
+        .query-input-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .text-input {
+            width: 100%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-sm);
+            color: var(--ink);
+            font-family: var(--sans);
+            font-size: 14px;
+            padding: 12px 14px;
+            outline: none;
+            resize: vertical;
+            min-height: 70px;
+            transition: border-color 0.2s;
+        }
+
+        .text-input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 2px var(--blue-glow);
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .voice-select-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--dim);
+        }
+
+        .voice-select {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            color: var(--ink);
+            font-family: var(--mono);
+            font-size: 12.5px;
+            padding: 7px 10px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            color: #FFFFFF;
+            border: none;
+            padding: 10px 22px;
+            border-radius: var(--radius-sm);
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-primary:hover { opacity: 0.95; transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* ── Latency Metrics Board ── */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .metric-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-sm);
+            padding: 14px 12px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--panel-border);
+        }
+
+        .metric-card.stt::before { background: var(--blue); }
+        .metric-card.llm::before { background: var(--purple); }
+        .metric-card.tts::before { background: var(--orange); }
+        .metric-card.total::before { background: var(--accent); }
+
+        .metric-label {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-family: var(--mono);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .metric-card.total .metric-value {
+            color: var(--accent);
+        }
+
+        .metric-target {
+            font-size: 10px;
+            color: var(--dim);
+            margin-top: 4px;
+            font-family: var(--mono);
+        }
+
+        /* ── Result Box ── */
+        .result-box {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .result-box.show {
+            display: block;
+            animation: slideIn 0.25s ease;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .result-pill {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid rgba(46, 204, 155, 0.3);
+        }
+
+        .result-reply {
+            font-size: 14.5px;
+            line-height: 1.6;
+            color: var(--ink);
+            margin-bottom: 14px;
+            background: var(--panel);
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--accent);
+        }
+
+        .audio-player-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .audio-player-wrap audio {
+            width: 100%;
+            height: 38px;
+            border-radius: 6px;
+        }
+
+        /* ── Latency Reference Guide Table ── */
+        .reference-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .reference-table th, .reference-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .reference-table th {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: var(--bg-elevated);
+        }
+
+        .reference-table td {
+            color: var(--ink-secondary);
+        }
+
+        .reference-table .tech {
+            font-family: var(--mono);
+            color: var(--ink);
+            font-size: 12px;
+        }
+
+        .reference-table .time {
+            font-family: var(--mono);
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .guide-box {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--ink-secondary);
+        }
+
+        .guide-box strong { color: var(--ink); }
+
+        /* ── Call History Dashboard Styles ── */
+        .history-grid-top {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 720px) {
+            .history-grid-top { grid-template-columns: repeat(2, 1fr); }
+        }
+        .hist-stat-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hist-stat-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+        }
+        .hist-stat-card.total::before { background: var(--accent); }
+        .hist-stat-card.phone::before { background: var(--blue); }
+        .hist-stat-card.web::before { background: var(--purple); }
+        .hist-stat-card.keys::before { background: var(--orange); }
+
+        .hist-stat-num {
+            font-family: var(--mono);
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-top: 4px;
+        }
+        .hist-stat-desc {
+            font-size: 11px;
+            color: var(--dim);
+            font-family: var(--mono);
+            margin-top: 2px;
+        }
+
+        .hist-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .hist-filters {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .filter-btn {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            color: var(--ink-secondary);
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .filter-btn.active, .filter-btn:hover {
+            background: var(--panel-hover);
+            color: var(--ink);
+            border-color: var(--dim);
+        }
+        .filter-btn.active {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .hist-live-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--accent);
+            background: var(--accent-glow);
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(46, 204, 155, 0.25);
+        }
+        .hist-live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            animation: pulse-dot 1.8s infinite;
+        }
+        @keyframes pulse-dot {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
+        /* Calls Table */
+        .calls-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            background: var(--bg-elevated);
+        }
+        .calls-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+        .calls-table th {
+            padding: 12px 14px;
+            background: #0d1319;
+            color: var(--dim);
+            font-family: var(--mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--panel-border);
+        }
+        .calls-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(32, 45, 56, 0.6);
+            color: var(--ink-secondary);
+            vertical-align: middle;
+        }
+        .calls-table tr:hover td {
+            background: var(--panel-hover);
+        }
+
+        .phone-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-weight: 600;
+            font-size: 12.5px;
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 9px;
+            border-radius: 6px;
+            border: 1px solid var(--panel-border);
+        }
+        .channel-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-family: var(--mono);
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+        .channel-pill.exotel {
+            background: var(--blue-glow);
+            color: var(--blue);
+            border: 1px solid rgba(62, 139, 255, 0.3);
+        }
+        .channel-pill.web {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid rgba(46, 204, 155, 0.3);
+        }
+
+        .status-pill {
+            display: inline-block;
+            font-size: 10.5px;
+            font-family: var(--mono);
+            padding: 2px 7px;
+            border-radius: 8px;
+        }
+        .status-pill.active {
+            background: rgba(46, 204, 155, 0.15);
+            color: var(--accent);
+        }
+        .status-pill.completed {
+            background: rgba(157, 176, 194, 0.12);
+            color: var(--ink-secondary);
+        }
+
+        .btn-view-chat {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            color: var(--ink);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+        .btn-view-chat:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--panel-hover);
+        }
+
+        /* ── Modal Dialog Styles ── */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-backdrop.show {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-content {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 680px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-elevated);
+        }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--panel-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-elevated);
+            font-size: 12px;
+            color: var(--dim);
+        }
+
+        /* Chat bubbles */
+        .chat-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 82%;
+        }
+        .chat-row.user {
+            align-self: flex-start;
+        }
+        .chat-row.assistant {
+            align-self: flex-end;
+        }
+        .chat-bubble {
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 13.5px;
+            line-height: 1.55;
+            word-break: break-word;
+        }
+        .chat-row.user .chat-bubble {
+            background: var(--bg-elevated);
+            border: 1px solid var(--panel-border);
+            color: var(--ink);
+            border-bottom-left-radius: 4px;
+        }
+        .chat-row.assistant .chat-bubble {
+            background: rgba(46, 204, 155, 0.12);
+            border: 1px solid rgba(46, 204, 155, 0.3);
+            color: #d1fae5;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-meta {
+            font-size: 10.5px;
+            font-family: var(--mono);
+            color: var(--dim);
+            padding: 0 4px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .chat-row.assistant .chat-meta {
+            justify-content: flex-end;
+        }
+
+        /* ── Admin Login Overlay Styles ── */
+        #adminAuthOverlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 50% 20%, #15222e 0%, #080d12 85%);
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-card {
+            background: #111a22;
+            border: 1px solid #203040;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 410px;
+            padding: 36px 28px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(46, 204, 155, 0.08);
+            text-align: center;
+            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .login-input {
+            width: 100%;
+            background: #0b1218;
+            border: 1px solid #223446;
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            color: var(--ink);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .login-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(46, 204, 155, 0.15);
+        }
+        .login-btn {
+            width: 100%;
+            background: var(--accent);
+            color: #04241a;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 13px;
+            font-size: 14.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .login-btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(46, 204, 155, 0.3);
+        }
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        .admin-logout-btn {
+            background: transparent;
+            border: 1px solid var(--panel-border);
+            color: var(--dim);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-left: 8px;
+        }
+        .admin-logout-btn:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: var(--red-glow);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Admin Security Authentication Overlay -->
+    <div id="adminAuthOverlay" style="display: flex;">
+        <div class="login-card">
+            <div class="tag-pill" style="margin-bottom: 12px;">🔒 Admin Security Gate</div>
+            <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;">IndiaWalls AI Console</h2>
+            <p style="font-size: 13px; color: var(--dim); margin-bottom: 24px; line-height: 1.5;">
+                Protected System Console. Enter administrator username and password to access live telephony controls and customer call records.
+            </p>
+
+            <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+                <div style="text-align: left; margin-bottom: 16px;">
+                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em;">Admin Username</label>
+                    <input type="text" id="loginUsername" class="login-input" required autocomplete="username" placeholder="admin" />
+                </div>
+
+                <div style="text-align: left; margin-bottom: 20px;">
+                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em;">Password</label>
+                    <input type="password" id="loginPassword" class="login-input" required autocomplete="current-password" placeholder="••••••••" />
+                </div>
+
+                <div id="loginErrorMsg" style="display: none; background: var(--red-glow); border: 1px solid var(--red); color: #fca5a5; font-size: 12.5px; border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 16px; text-align: left;"></div>
+
+                <button type="submit" id="loginSubmitBtn" class="login-btn">
+                    <span>Unlock Admin Console</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container" id="appContainer" style="display: none;">
+
+        <!-- Branding -->
+        <header>
+            <div class="tag-pill">IndiaWalls AI • Pipecat + Groq + Kokoro-82M</div>
+            <h1>IndiaWalls AI Calling — Test & Latency Console</h1>
+            <p class="subtitle">
+                Official Voice AI Assistant for <strong>Indiawalls Infratech Private Limited</strong>:
+                Precast Concrete Boundary Walls, Fencing Poles & Paver Blocks.
+        </header>
+
+        <!-- Local File Notice Banner -->
+        <div id="fileProtocolNotice" style="display:none; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--orange); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 20px; font-size: 13.5px; color: var(--orange); text-align: center;">
+            ⚠️ <strong>Notice:</strong> You opened <code>index.html</code> directly as a local file (<code>file://</code>). Web browsers block live APIs from local files. 
+            Please open <a href="http://localhost:8765/" style="color: #60a5fa; text-decoration: underline; font-weight: 700;">http://localhost:8765/</a> in your browser.
+        </div>
+
+        <!-- Live Services Health Strip -->
+        <div class="health-strip">
+            <div class="health-items">
+                <div class="service-badge">
+                    <span id="backendDot" class="indicator online"></span>
+                    <span id="backendLabel">Server (:8765)</span>
+                </div>
+                <div class="service-badge">
+                    <span id="sttDot" class="indicator online"></span>
+                    <span id="sttLabel">STT: IndicConformer (Local)</span>
+                </div>
+                <div class="service-badge">
+                    <span id="groqDot" class="indicator warn"></span>
+                    <span id="groqLabel">LLM (Gemini Flash-Lite)</span>
+                </div>
+                <div class="service-badge">
+                    <span id="kokoroDot" class="indicator warn"></span>
+                    <span id="kokoroLabel">Kokoro TTS (In-Process)</span>
+                </div>
+                <div class="service-badge" id="adminUserBadge" style="display: none; border-color: rgba(46, 204, 155, 0.4); background: rgba(46, 204, 155, 0.08);">
+                    <span class="indicator online"></span>
+                    <span id="adminUsernameLabel" style="color: var(--accent); font-weight: 600;">Admin: admin</span>
+                    <button class="admin-logout-btn" onclick="handleAdminLogout()" title="Sign out of console">Sign Out</button>
+                </div>
+            </div>
+            <button id="refreshHealthBtn" class="btn-mini" title="Check server health">Refresh Status</button>
+        </div>
+
+        <!-- Mode Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="tab-query">
+                <span>⚡ Test Query & Latency</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-call">
+                <span>🎙️ Live Voice Call (Mic)</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-history">
+                <span>📞 Call History & Live Chats</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-guide">
+                <span>📊 Latency Benchmark Guide</span>
+            </button>
+        </div>
+
+        <!-- ════════════════ TAB 1: Single Query Test ════════════════ -->
+        <div id="tab-query" class="tab-content active">
+            <div class="card">
+                <div class="card-title">
+                    <span>1. Select or Type IndiaWalls Question</span>
+                    <span style="color: var(--accent);">IndiaWalls Knowledge + Kokoro TTS</span>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="prompt-presets">
+                    <button class="preset-btn" data-text="नमस्ते, इंडियावाल्स क्या उत्पाद और सेवाएं बनाती है?">कंपनी की सेवाएं</button>
+                    <button class="preset-btn" data-text="मुझे फार्महाउस के लिए रेडीमेड बाउंड्री वॉल चाहिए, क्या जानकारी है?">फार्महाउस बाउंड्री वॉल</button>
+                    <button class="preset-btn" data-text="प्रीकास्ट कंक्रीट वॉल लगाने में कितना समय लगता है?">इंस्टॉलेशन का समय</button>
+                    <button class="preset-btn" data-text="आपकी फैक्ट्रियां कहां हैं और संपर्क नंबर क्या है?">फैक्ट्री व संपर्क नंबर</button>
+                </div>
+
+                <!-- Query Input -->
+                <div class="query-input-wrap">
+                    <textarea id="queryInput" class="text-input" placeholder="कंपनी से जुड़ा प्रश्न हिंदी में लिखें या ऊपर दिए गए विकल्पों में से चुनें...">नमस्ते, इंडियावाल्स क्या उत्पाद और सेवाएं बनाती है?</textarea>
+
+                    <div class="controls-row">
+                        <div class="voice-select-wrap">
+                            <span>Kokoro Voice:</span>
+                            <select id="voiceSelect" class="voice-select">
+                                <option value="hf_alpha">hf_alpha (Female 1 - Default)</option>
+                                <option value="hf_beta">hf_beta (Female 2)</option>
+                                <option value="hm_omega">hm_omega (Male 1)</option>
+                                <option value="hm_psi">hm_psi (Male 2)</option>
+                            </select>
+                        </div>
+
+                        <button id="runQueryBtn" class="btn-primary">
+                            <span>Test Response & Latency</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M5 12h14M12 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Latency Scorecard -->
+                <div class="card-title" style="margin-top: 20px;">
+                    <span>Pipeline Stage Latency Breakdown</span>
+                    <span id="latencyVerdict" style="color: var(--dim);">Target: &lt; 1000 ms</span>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card stt">
+                        <div class="metric-label">1. STT (Whisper)</div>
+                        <div id="metricStt" class="metric-value">~200 ms</div>
+                        <div class="metric-target">Expected &lt; 300ms</div>
+                    </div>
+                    <div class="metric-card llm">
+                        <div class="metric-label">2. LLM (Llama 3.3)</div>
+                        <div id="metricLlm" class="metric-value">–</div>
+                        <div class="metric-target">Expected &lt; 350ms</div>
+                    </div>
+                    <div class="metric-card tts">
+                        <div class="metric-label">3. TTS (Kokoro)</div>
+                        <div id="metricTts" class="metric-value">–</div>
+                        <div class="metric-target">Expected &lt; 250ms</div>
+                    </div>
+                    <div class="metric-card total">
+                        <div class="metric-label">Total Round-Trip</div>
+                        <div id="metricTotal" class="metric-value">–</div>
+                        <div class="metric-target">Target &lt; 1000ms</div>
+                    </div>
+                </div>
+
+                <!-- Result Box -->
+                <div id="resultBox" class="result-box">
+                    <div class="result-header">
+                        <span style="font-size: 12px; font-weight: 600; color: var(--ink-secondary);">AI Hindi Voice Response</span>
+                        <span id="resultPill" class="result-pill">Sub-second Latency</span>
+                    </div>
+                    <div id="resultText" class="result-reply">AI जवाब यहाँ आएगा...</div>
+                    <div class="audio-player-wrap">
+                        <audio id="resultAudio" controls autoplay></audio>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════ TAB 2: Live Mic Voice Call ════════════════ -->
+        <div id="tab-call" class="tab-content">
+            <div class="card">
+                <div class="call-hero">
+                    <div id="visualizer" class="visualizer"></div>
+
+                    <button id="callBtn" class="call-circle-btn" aria-label="Start Voice Call">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1.003 1.003 0 011.01-.24c1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1v3.49c0 .55-.45 1-1 1C10.07 22 2 13.93 2 4c0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.1.31.03.66-.25 1.02l-2.2 2.2z"/>
+                        </svg>
+                    </button>
+
+                    <div id="callStateLabel" class="call-status-label">Start Voice Call</div>
+                    <p class="call-desc">
+                        Continuous bi-directional streaming over Pipecat WebSocket.
+                        Silero VAD detects your speech automatically.
+                    </p>
+
+                    <!-- Audio Device Selection for AirPods / Headsets -->
+                    <div class="audio-devices-panel" style="display: flex; gap: 10px; margin-top: 14px; justify-content: center; flex-wrap: wrap;">
+                        <div style="text-align: left;">
+                            <label style="font-size: 11px; color: var(--dim); display: block; margin-bottom: 3px;">🎙️ Microphone</label>
+                            <select id="micSelect" style="background: var(--bg-elevated); color: var(--ink); border: 1px solid var(--panel-border); border-radius: 6px; padding: 6px 10px; font-size: 12px; max-width: 200px; outline: none;"></select>
+                        </div>
+                        <div style="text-align: left;">
+                            <label style="font-size: 11px; color: var(--dim); display: block; margin-bottom: 3px;">🎧 Speaker / Headphones</label>
+                            <select id="speakerSelect" style="background: var(--bg-elevated); color: var(--ink); border: 1px solid var(--panel-border); border-radius: 6px; padding: 6px 10px; font-size: 12px; max-width: 200px; outline: none;"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-title" style="margin-top: 18px;">
+                    <span>Live Conversation Transcript</span>
+                </div>
+
+                <div id="transcript" class="transcript-box">
+                    <div id="callEmptyState" class="empty-placeholder">
+                        Click "Start Voice Call" and speak Hindi into your microphone...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════ TAB 3: Call History & Live Chats ════════════════ -->
+        <div id="tab-history" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>Calling History & Live Dialogues</span>
+                    <span id="histLiveStatus" class="hist-live-tag">
+                        <span class="hist-live-dot"></span>
+                        Auto-Sync Active (3s)
+                    </span>
+                </div>
+
+                <!-- 4 Top KPI Stat Cards -->
+                <div class="history-grid-top">
+                    <div class="hist-stat-card total">
+                        <div class="metric-label">Total Calls</div>
+                        <div id="statTotalCalls" class="hist-stat-num">0</div>
+                        <div class="hist-stat-desc">All sessions recorded</div>
+                    </div>
+                    <div class="hist-stat-card phone">
+                        <div class="metric-label">Phone Calls (Exotel)</div>
+                        <div id="statExotelCalls" class="hist-stat-num">0</div>
+                        <div class="hist-stat-desc">PSTN incoming lines</div>
+                    </div>
+                    <div class="hist-stat-card web">
+                        <div class="metric-label">Web Voice Calls</div>
+                        <div id="statWebCalls" class="hist-stat-num">0</div>
+                        <div class="hist-stat-desc">Browser mic callers</div>
+                    </div>
+                    <div class="hist-stat-card keys">
+                        <div class="metric-label">Gemini Key Rotator</div>
+                        <div id="statKeyStatus" class="hist-stat-num" style="font-size: 15px; margin-top: 8px;">1 Key Active</div>
+                        <div id="statKeyDesc" class="hist-stat-desc">Multi-account rotation</div>
+                    </div>
+                </div>
+
+                <!-- Toolbar & Filters -->
+                <div class="hist-toolbar">
+                    <div class="hist-filters">
+                        <button class="filter-btn active" data-filter="all">All Calls</button>
+                        <button class="filter-btn" data-filter="exotel">📞 Phone Only</button>
+                        <button class="filter-btn" data-filter="web">🌐 Web Only</button>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input id="histSearchInput" type="text" placeholder="Search number or ID..." style="background: var(--bg-elevated); border: 1px solid var(--panel-border); color: var(--ink); padding: 5px 10px; border-radius: 6px; font-size: 12px; outline: none; font-family: var(--mono); width: 170px;" />
+                        <button id="refreshHistBtn" class="btn-mini" title="Refresh calls now">↻ Refresh</button>
+                        <button id="clearHistBtn" class="btn-mini" style="color: var(--red); border-color: rgba(239, 68, 68, 0.3);" title="Clear history">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Table of Call Records -->
+                <div class="calls-table-wrap">
+                    <table class="calls-table">
+                        <thead>
+                            <tr>
+                                <th>Caller Number / ID</th>
+                                <th>Channel</th>
+                                <th>Start Time</th>
+                                <th>Duration</th>
+                                <th>Turns</th>
+                                <th>Status</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="callsTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: var(--dim); padding: 32px;">
+                                    Loading call records...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════ TAB 4: Latency Guide ════════════════ -->
+        <div id="tab-guide" class="tab-content">
+            <div class="card">
+                <div class="card-title">Speech-to-Speech Latency Targets</div>
+
+                <table class="reference-table">
+                    <thead>
+                        <tr>
+                            <th>Pipeline Stage</th>
+                            <th>Component</th>
+                            <th>Target Latency</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>1. VAD & Framing</strong></td>
+                            <td class="tech">Silero VAD</td>
+                            <td class="time">&lt; 30 ms</td>
+                            <td>Zero-latency neural voice activity detector</td>
+                        </tr>
+                        <tr>
+                            <td><strong>2. STT (Speech-to-Text)</strong></td>
+                            <td class="tech">Groq Whisper (hi)</td>
+                            <td class="time">150 – 250 ms</td>
+                            <td>LPUs run Whisper ~10x faster than real-time</td>
+                        </tr>
+                        <tr>
+                            <td><strong>3. LLM Generation</strong></td>
+                            <td class="tech">Groq Llama 3.3 70B</td>
+                            <td class="time">200 – 350 ms</td>
+                            <td>Time-to-first-token (TTFT) ~180ms, short 2-sentence responses</td>
+                        </tr>
+                        <tr>
+                            <td><strong>4. TTS Synthesis</strong></td>
+                            <td class="tech">Kokoro-82M (Local)</td>
+                            <td class="time">100 – 250 ms</td>
+                            <td>Runs locally on CPU/GPU via PyTorch, 24kHz audio</td>
+                        </tr>
+                        <tr style="background: rgba(46, 204, 155, 0.05);">
+                            <td><strong>🎯 Total Round-Trip</strong></td>
+                            <td class="tech">Pipecat Stream</td>
+                            <td class="time" style="color: var(--accent); font-size: 14px;">500 – 850 ms</td>
+                            <td><strong>Sub-second:</strong> natural phone call conversational pacing</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="guide-box">
+                    <strong>💡 Why is sub-second latency important?</strong><br />
+                    Human conversational pause in phone calls is typically between <strong>600ms and 900ms</strong>.
+                    Because Groq provides ultra-fast inference and Kokoro-82M generates speech in &lt; 200ms locally,
+                    the user hears the AI start speaking naturally without awkward dead-air pauses.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Chat Transcript Modal -->
+    <div id="chatModal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span id="modalCallerNumber" class="phone-badge" style="font-size: 14px;">+91 7820879777</span>
+                        <span id="modalChannelPill" class="channel-pill exotel">📞 Exotel PSTN</span>
+                        <span id="modalStatusPill" class="status-pill completed">Completed</span>
+                    </div>
+                    <div id="modalCallMeta" style="font-size: 11px; color: var(--dim); font-family: var(--mono); margin-top: 5px;">
+                        Call ID: exo_12345 • Duration: 45s • Turns: 4
+                    </div>
+                </div>
+                <button id="closeModalBtn" class="btn-mini" style="font-size: 16px; padding: 4px 10px; cursor: pointer;">✕</button>
+            </div>
+
+            <div id="modalChatBody" class="modal-body">
+                <!-- Dynamically populated conversation bubbles -->
+            </div>
+
+            <div class="modal-footer">
+                <span id="modalTimestamp" style="font-family: var(--mono); font-size: 11px;">Started: --</span>
+                <div style="display: flex; gap: 8px;">
+                    <button id="copyTranscriptBtn" class="btn-mini">📋 Copy Transcript</button>
+                    <button id="closeModalFooterBtn" class="btn-mini">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        // ── Visualizer Setup ──
+        const viz = document.getElementById('visualizer');
+        const NUM_BARS = 22;
+        for (let i = 0; i < NUM_BARS; i++) {
+            const b = document.createElement('div');
+            b.className = 'vbar';
+            viz.appendChild(b);
+        }
+        const vizBars = viz.querySelectorAll('.vbar');
+
+        // ── Tab Switching ──
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // ── Auto-Detect Backend Origin (Supports Port Forwarding Tunnels, HTTPS, and Localhost) ──
+        const isFileProtocol = window.location.protocol === 'file:';
+        if (isFileProtocol) {
+            const fileNotice = document.getElementById('fileProtocolNotice');
+            if (fileNotice) fileNotice.style.display = 'block';
+        }
+
+        // If served via any HTTP/HTTPS server or port-forwarding tunnel (ngrok, cloudflare, vscode tunnel),
+        // use relative path '' so all API requests route through the tunnel and HTTPS without mixed-content errors!
+        let BACKEND_BASE = isFileProtocol ? 'http://127.0.0.1:8765' : '';
+        const wsProto = (window.location.protocol === 'https:') ? 'wss:' : 'ws:';
+        let WS_URL = isFileProtocol 
+            ? 'ws://127.0.0.1:8765/ws' 
+            : `${wsProto}//${window.location.host}/ws`;
+
+        // ── Admin Authentication & Session Management ──
+        const AUTH_STORAGE_KEY = 'tipsg_admin_token';
+        let isAuthenticated = false;
+
+        function getAuthToken() {
+            return localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY) || '';
+        }
+
+        function setAuthToken(token) {
+            localStorage.setItem(AUTH_STORAGE_KEY, token);
+        }
+
+        function clearAuthToken() {
+            localStorage.removeItem(AUTH_STORAGE_KEY);
+            sessionStorage.removeItem(AUTH_STORAGE_KEY);
+        }
+
+        function showAuthGate(show) {
+            const overlay = document.getElementById('adminAuthOverlay');
+            const container = document.getElementById('appContainer');
+            const badge = document.getElementById('adminUserBadge');
+            if (show) {
+                isAuthenticated = false;
+                if (overlay) overlay.style.display = 'flex';
+                if (container) container.style.display = 'none';
+                if (badge) badge.style.display = 'none';
+            } else {
+                isAuthenticated = true;
+                if (overlay) overlay.style.display = 'none';
+                if (container) container.style.display = 'block';
+                if (badge) badge.style.display = 'flex';
+            }
+        }
+
+        async function authFetch(url, options = {}) {
+            const token = getAuthToken();
+            if (!token) {
+                showAuthGate(true);
+                return { ok: false, status: 401, json: async () => ({ detail: 'Not authenticated' }) };
+            }
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = 'Bearer ' + token;
+            try {
+                const res = await fetch(url, options);
+                if (res.status === 401) {
+                    clearAuthToken();
+                    showAuthGate(true);
+                }
+                return res;
+            } catch (err) {
+                throw err;
+            }
+        }
+
+        async function checkAdminAuth() {
+            const token = getAuthToken();
+            if (!token) {
+                showAuthGate(true);
+                return false;
+            }
+            try {
+                const res = await fetch(`${BACKEND_BASE}/api/auth/me`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.authenticated) {
+                        showAuthGate(false);
+                        const label = document.getElementById('adminUsernameLabel');
+                        if (label) label.textContent = 'Admin: ' + (data.username || 'admin');
+                        return true;
+                    }
+                }
+            } catch (_) {}
+            clearAuthToken();
+            showAuthGate(true);
+            return false;
+        }
+
+        async function handleAdminLogin(event) {
+            if (event) event.preventDefault();
+            const usernameInput = document.getElementById('loginUsername');
+            const passwordInput = document.getElementById('loginPassword');
+            const submitBtn = document.getElementById('loginSubmitBtn');
+            const errorMsg = document.getElementById('loginErrorMsg');
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            if (!username || !password) return;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span>Verifying...</span>`;
+            if (errorMsg) errorMsg.style.display = 'none';
+
+            try {
+                const res = await fetch(`${BACKEND_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (res.ok && data.success && data.token) {
+                    setAuthToken(data.token);
+                    showAuthGate(false);
+                    const label = document.getElementById('adminUsernameLabel');
+                    if (label) label.textContent = 'Admin: ' + (data.username || username);
+                    checkHealth();
+                    fetchCallHistory();
+                } else {
+                    if (errorMsg) {
+                        errorMsg.textContent = data.detail || data.message || 'Invalid username or password.';
+                        errorMsg.style.display = 'block';
+                    }
+                }
+            } catch (err) {
+                if (errorMsg) {
+                    errorMsg.textContent = 'Server connection failed. Make sure server is running on :8765.';
+                    errorMsg.style.display = 'block';
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>Unlock Admin Console</span>`;
+            }
+        }
+
+        async function handleAdminLogout() {
+            try {
+                await authFetch(`${BACKEND_BASE}/api/auth/logout`, { method: 'POST' });
+            } catch (_) {}
+            clearAuthToken();
+            showAuthGate(true);
+        }
+
+        // ── Preset Prompt Clicking ──
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('queryInput').value = btn.dataset.text;
+            });
+        });
+
+        // ── Health Check ──
+        async function checkHealth() {
+            try {
+                let res;
+                try {
+                    res = await fetch(`${BACKEND_BASE}/api/health`);
+                } catch (firstErr) {
+                    if (isFileProtocol) {
+                        const altBase = BACKEND_BASE.includes('127.0.0.1') ? 'http://localhost:8765' : 'http://127.0.0.1:8765';
+                        res = await fetch(`${altBase}/api/health`);
+                        BACKEND_BASE = altBase;
+                        WS_URL = altBase.replace('http', 'ws') + '/ws';
+                    } else {
+                        throw firstErr;
+                    }
+                }
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+
+                document.getElementById('backendDot').className = 'indicator online';
+                document.getElementById('backendLabel').textContent = 'Server (Online)';
+
+                // STT Status
+                const sttDot = document.getElementById('sttDot');
+                const sttLabel = document.getElementById('sttLabel');
+                if (data.stt && data.stt.backend === 'local') {
+                    if (data.stt.files_present) {
+                        sttDot.className = 'indicator online';
+                        sttLabel.textContent = 'STT: IndicConformer (Local, 0 Limit)';
+                    } else {
+                        sttDot.className = 'indicator warn';
+                        sttLabel.textContent = 'STT: Model Missing (Run download_models.py)';
+                    }
+                } else {
+                    sttDot.className = 'indicator online';
+                    sttLabel.textContent = 'STT: Groq Whisper (20 RPM)';
+                }
+
+                // LLM Status (Gemini / Groq)
+                const groqDot = document.getElementById('groqDot');
+                const groqLabel = document.getElementById('groqLabel');
+                const backendName = (data.llm_backend === 'gemini') ? 'Gemini' : 'Groq';
+                const modelName = data.llm_model || ((data.llm_backend === 'gemini') ? 'gemini-2.0-flash-lite' : 'qwen3.8-27b');
+                if (data.llm_configured) {
+                    groqDot.className = 'indicator online';
+                    groqLabel.textContent = `LLM: ${backendName} (${modelName})`;
+                } else {
+                    groqDot.className = 'indicator warn';
+                    groqLabel.textContent = `LLM: ${backendName} (Missing API Key in .env)`;
+                }
+
+                // Kokoro TTS Status
+                const kokoroDot = document.getElementById('kokoroDot');
+                const kokoroLabel = document.getElementById('kokoroLabel');
+                if (data.kokoro_tts && data.kokoro_tts.connected) {
+                    kokoroDot.className = 'indicator online';
+                    const modeTxt = data.kokoro_tts.mode === 'inproc' ? 'In-Process' : ':8880';
+                    kokoroLabel.textContent = `Kokoro TTS (${modeTxt} Online)`;
+                } else {
+                    kokoroDot.className = 'indicator offline';
+                    kokoroLabel.textContent = 'Kokoro TTS (Not Ready)';
+                }
+            } catch (e) {
+                document.getElementById('backendDot').className = 'indicator offline';
+            }
+        }
+        document.getElementById('refreshHealthBtn').addEventListener('click', checkHealth);
+        checkHealth();
+
+        // ── Tab 1: Single Query Test ──
+        const runQueryBtn = document.getElementById('runQueryBtn');
+        const queryInput = document.getElementById('queryInput');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const resultBox = document.getElementById('resultBox');
+        const resultText = document.getElementById('resultText');
+        const resultAudio = document.getElementById('resultAudio');
+        const metricLlm = document.getElementById('metricLlm');
+        const metricTts = document.getElementById('metricTts');
+        const metricTotal = document.getElementById('metricTotal');
+        const latencyVerdict = document.getElementById('latencyVerdict');
+
+        runQueryBtn.addEventListener('click', async () => {
+            const text = queryInput.value.trim();
+            if (!text) return;
+
+            runQueryBtn.disabled = true;
+            runQueryBtn.innerHTML = `<span>Synthesizing...</span>`;
+
+            metricLlm.textContent = '...';
+            metricTts.textContent = '...';
+            metricTotal.textContent = '...';
+
+            try {
+                const res = await fetch(`${BACKEND_BASE}/api/test-pipeline`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: text,
+                        voice: voiceSelect.value,
+                    }),
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    alert('Error: ' + (data.detail || 'Test failed'));
+                    return;
+                }
+
+                // Show metrics
+                metricLlm.textContent = data.latency_ms.llm + ' ms';
+                metricTts.textContent = data.latency_ms.tts + ' ms';
+                metricTotal.textContent = data.latency_ms.total + ' ms';
+
+                if (data.latency_ms.total < 1000) {
+                    latencyVerdict.textContent = `⚡ Sub-second (${data.latency_ms.total} ms) — Excellent`;
+                    latencyVerdict.style.color = 'var(--accent)';
+                } else {
+                    latencyVerdict.textContent = `⏱️ ${data.latency_ms.total} ms`;
+                    latencyVerdict.style.color = 'var(--orange)';
+                }
+
+                // Show result box & play audio
+                resultText.textContent = data.reply_text;
+                resultAudio.src = data.audio_base64;
+                resultBox.classList.add('show');
+                resultAudio.play().catch(() => {});
+
+            } catch (err) {
+                alert('Connection error: Make sure server.py is running on http://localhost:8765');
+            } finally {
+                runQueryBtn.disabled = false;
+                runQueryBtn.innerHTML = `<span>Test Response & Latency</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+            }
+        });
+
+        // ── Tab 2: Live Mic Voice Call ──
+        const callBtn = document.getElementById('callBtn');
+        const callStateLabel = document.getElementById('callStateLabel');
+        const transcriptBox = document.getElementById('transcript');
+        const callEmptyState = document.getElementById('callEmptyState');
+
+        let ws = null;
+        let audioCtx = null;
+        let mediaStream = null;
+        let sourceNode = null;
+        let isCallActive = false;
+        let playbackQueue = [];
+        let isPlaying = false;
+        let vizAnimFrame = null;
+        let analyserNode = null;
+
+        function appendBubble(who, text) {
+            if (callEmptyState) callEmptyState.style.display = 'none';
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble ' + who;
+            const speaker = document.createElement('span');
+            speaker.className = 'speaker';
+            speaker.textContent = who === 'user' ? 'Caller' : 'AI Assistant';
+            bubble.appendChild(speaker);
+            bubble.appendChild(document.createTextNode(text));
+            transcriptBox.appendChild(bubble);
+            transcriptBox.scrollTop = transcriptBox.scrollHeight;
+        }
+
+        function startViz() {
+            if (!audioCtx || !sourceNode) return;
+            analyserNode = audioCtx.createAnalyser();
+            analyserNode.fftSize = 64;
+            sourceNode.connect(analyserNode);
+            viz.classList.add('active');
+
+            const data = new Uint8Array(analyserNode.frequencyBinCount);
+            function render() {
+                vizAnimFrame = requestAnimationFrame(render);
+                analyserNode.getByteFrequencyData(data);
+                vizBars.forEach((bar, idx) => {
+                    const val = data[idx % data.length] || 0;
+                    bar.style.height = Math.max(4, (val / 255) * 32) + 'px';
+                });
+            }
+            render();
+        }
+
+        function stopViz() {
+            if (vizAnimFrame) cancelAnimationFrame(vizAnimFrame);
+            viz.classList.remove('active');
+            vizBars.forEach(b => b.style.height = '4px');
+        }
+
+        let currentAudioSource = null;
+
+        // ── Audio Device Enumeration (AirPods, Built-in Mic, Speakers) ──
+        const micSelect = document.getElementById('micSelect');
+        const speakerSelect = document.getElementById('speakerSelect');
+
+        async function updateAudioDevices() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const mics = devices.filter(d => d.kind === 'audioinput');
+                const speakers = devices.filter(d => d.kind === 'audiooutput');
+
+                const curMic = micSelect.value;
+                const curSpk = speakerSelect.value;
+
+                micSelect.innerHTML = mics.map((m, idx) => 
+                    `<option value="${m.deviceId}">${m.label || `Microphone ${idx + 1}`}</option>`
+                ).join('');
+                if (curMic) micSelect.value = curMic;
+
+                if (speakers.length > 0) {
+                    speakerSelect.innerHTML = speakers.map((s, idx) => 
+                        `<option value="${s.deviceId}">${s.label || `Speaker ${idx + 1}`}</option>`
+                    ).join('');
+                    if (curSpk) speakerSelect.value = curSpk;
+                } else {
+                    speakerSelect.innerHTML = `<option value="default">Default System Audio</option>`;
+                }
+            } catch (err) {
+                console.warn("Could not enumerate audio devices:", err);
+            }
+        }
+        if (navigator.mediaDevices) {
+            navigator.mediaDevices.addEventListener('devicechange', updateAudioDevices);
+            updateAudioDevices();
+        }
+
+        function stopAudioPlayback() {
+            playbackQueue = [];
+            if (currentAudioSource) {
+                try {
+                    currentAudioSource.onended = null;
+                    currentAudioSource.stop();
+                } catch (_) {}
+                currentAudioSource = null;
+            }
+            isPlaying = false;
+        }
+
+        function queueAudio(pcmBuffer) {
+            playbackQueue.push(pcmBuffer);
+            if (!isPlaying) playQueue();
+        }
+
+        async function playQueue() {
+            if (playbackQueue.length === 0) {
+                isPlaying = false;
+                currentAudioSource = null;
+                return;
+            }
+            isPlaying = true;
+            const pcm = playbackQueue.shift();
+            if (!audioCtx || audioCtx.state === 'closed') return;
+
+            if (audioCtx.state === 'suspended') {
+                try { await audioCtx.resume(); } catch (_) {}
+            }
+
+            // Route to selected speaker / AirPods if supported
+            if (speakerSelect && speakerSelect.value && audioCtx.setSinkId) {
+                try {
+                    await audioCtx.setSinkId(speakerSelect.value);
+                } catch (_) {}
+            }
+
+            const int16 = new Int16Array(pcm);
+            const float32 = new Float32Array(int16.length);
+            for (let i = 0; i < int16.length; i++) {
+                float32[i] = int16[i] / 32768;
+            }
+
+            const buf = audioCtx.createBuffer(1, float32.length, 24000);
+            buf.getChannelData(0).set(float32);
+
+            const src = audioCtx.createBufferSource();
+            currentAudioSource = src;
+            src.buffer = buf;
+            src.connect(audioCtx.destination);
+            src.onended = () => {
+                if (currentAudioSource === src) {
+                    currentAudioSource = null;
+                    playQueue();
+                }
+            };
+            src.start();
+        }
+
+        // ── Audio Resampler to 16000Hz Mono PCM ──
+        function downsampleTo16k(float32Array, inputSampleRate) {
+            if (inputSampleRate === 16000) {
+                const pcm16 = new Int16Array(float32Array.length);
+                for (let i = 0; i < float32Array.length; i++) {
+                    const s = Math.max(-1, Math.min(1, float32Array[i]));
+                    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                return pcm16.buffer;
+            }
+
+            const ratio = inputSampleRate / 16000;
+            const newLength = Math.round(float32Array.length / ratio);
+            const pcm16 = new Int16Array(newLength);
+            let offsetResult = 0;
+            let offsetBuffer = 0;
+
+            while (offsetResult < newLength) {
+                const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+                let accum = 0, count = 0;
+                for (let i = offsetBuffer; i < nextOffsetBuffer && i < float32Array.length; i++) {
+                    accum += float32Array[i];
+                    count++;
+                }
+                const avg = count > 0 ? (accum / count) : 0;
+                const s = Math.max(-1, Math.min(1, avg));
+                pcm16[offsetResult] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                offsetResult++;
+                offsetBuffer = nextOffsetBuffer;
+            }
+            return pcm16.buffer;
+        }
+
+        let procNode = null;
+        let muteGainNode = null;
+
+        async function getMicrophoneStream() {
+            // Stop prior tracks
+            if (mediaStream) {
+                try {
+                    mediaStream.getTracks().forEach(t => t.stop());
+                } catch (_) {}
+                mediaStream = null;
+            }
+
+            const chosenMicId = micSelect.value;
+            const audioConstraints = {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            };
+            if (chosenMicId && chosenMicId !== 'default') {
+                audioConstraints.deviceId = { exact: chosenMicId };
+            }
+
+            // Attempt 1: Enhanced constraints with chosen mic
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+                updateAudioDevices();
+                return stream;
+            } catch (err1) {
+                console.warn("Enhanced mic constraints failed, attempting fallback...", err1);
+                await new Promise(r => setTimeout(r, 150));
+                // Attempt 2: Basic audio constraints
+                try {
+                    const fallbackConstraints = (chosenMicId && chosenMicId !== 'default') 
+                        ? { audio: { deviceId: { exact: chosenMicId } } } 
+                        : { audio: true };
+                    const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                    updateAudioDevices();
+                    return stream;
+                } catch (err2) {
+                    throw err2;
+                }
+            }
+        }
+
+        async function startCall() {
+            endCall(true);
+
+            // Unlock AudioContext immediately within user click gesture
+            try {
+                if (!audioCtx || audioCtx.state === 'closed') {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+            } catch (_) {}
+
+            ws = new WebSocket(WS_URL);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = async () => {
+                try {
+                    mediaStream = await getMicrophoneStream();
+
+                    if (!audioCtx || audioCtx.state === 'closed') {
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    if (audioCtx.state === 'suspended') {
+                        await audioCtx.resume();
+                    }
+                    const actualRate = audioCtx.sampleRate;
+                    console.log(`AudioContext active: ${actualRate}Hz (resampling to 16000Hz)`);
+
+                    sourceNode = audioCtx.createMediaStreamSource(mediaStream);
+
+                    const bufferSize = 2048;
+                    procNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+                    sourceNode.connect(procNode);
+                    // Do NOT connect proc to destination to prevent mic feedback loop
+                    muteGainNode = audioCtx.createGain();
+                    muteGainNode.gain.value = 0;
+                    procNode.connect(muteGainNode);
+                    muteGainNode.connect(audioCtx.destination);
+
+                    procNode.onaudioprocess = (e) => {
+                        if (!isCallActive || !ws || ws.readyState !== WebSocket.OPEN) return;
+                        const inputChannel = e.inputBuffer.getChannelData(0);
+                        const pcmBuffer = downsampleTo16k(inputChannel, actualRate);
+                        ws.send(pcmBuffer);
+                    };
+
+                    isCallActive = true;
+                    callBtn.classList.add('in-call');
+                    callBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 100-16 8 8 0 000 16zM9 9h6v6H9V9z"/></svg>
+                    `;
+                    callStateLabel.textContent = 'Connected — Speak Hindi';
+                    startViz();
+                } catch (e) {
+                    console.error("Mic error:", e);
+                    alert('Mic access issue: ' + e.message + '\n\nTip: Select your AirPods or Laptop Microphone from the dropdown above.');
+                    endCall(true);
+                }
+            };
+
+            ws.onerror = () => {
+                endCall(true);
+            };
+
+            ws.onmessage = (e) => {
+                if (typeof e.data === 'string') {
+                    try {
+                        const m = JSON.parse(e.data);
+                        if (m.type === 'interruption' || m.type === 'clear') {
+                            stopAudioPlayback();
+                        }
+                        if (m.type === 'transcript') {
+                            if (m.user_text) {
+                                stopAudioPlayback();
+                                appendBubble('user', m.user_text);
+                            }
+                            if (m.reply_text) appendBubble('ai', m.reply_text);
+                        }
+                    } catch (_) {}
+                } else {
+                    queueAudio(e.data);
+                }
+            };
+
+            ws.onclose = () => {
+                endCall(true);
+            };
+        }
+
+        function endCall(closedByServer) {
+            isCallActive = false;
+            playbackQueue = [];
+            isPlaying = false;
+            stopViz();
+            stopAudioPlayback();
+
+            if (procNode) {
+                try {
+                    procNode.onaudioprocess = null;
+                    procNode.disconnect();
+                } catch (_) {}
+                procNode = null;
+            }
+            if (muteGainNode) {
+                try { muteGainNode.disconnect(); } catch (_) {}
+                muteGainNode = null;
+            }
+            if (sourceNode) {
+                try { sourceNode.disconnect(); } catch (_) {}
+                sourceNode = null;
+            }
+            if (mediaStream) {
+                try {
+                    mediaStream.getTracks().forEach(t => {
+                        t.stop();
+                        t.enabled = false;
+                    });
+                } catch (_) {}
+                mediaStream = null;
+            }
+            if (audioCtx) {
+                try {
+                    if (audioCtx.state !== 'closed') {
+                        audioCtx.close().catch(() => {});
+                    }
+                } catch (_) {}
+                audioCtx = null;
+            }
+            if (!closedByServer && ws && ws.readyState === WebSocket.OPEN) {
+                try { ws.close(); } catch (_) {}
+            }
+            ws = null;
+
+            callBtn.classList.remove('in-call');
+            callBtn.innerHTML = `
+                <svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1.003 1.003 0 011.01-.24c1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1v3.49c0 .55-.45 1-1 1C10.07 22 2 13.93 2 4c0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.1.31.03.66-.25 1.02l-2.2 2.2z"/></svg>
+            `;
+            callStateLabel.textContent = 'Start Voice Call';
+        }
+
+        window.addEventListener('beforeunload', () => {
+            endCall();
+        });
+
+        callBtn.addEventListener('click', () => {
+            if (isCallActive) endCall();
+            else startCall();
+        });
+
+        // ══════════════════════════════════════════════════════════════
+        // ── TAB 3: Call History & Live Chat Dialogues Dashboard ──
+        // ══════════════════════════════════════════════════════════════
+        let allCallsList = [];
+        let currentCallFilter = 'all';
+        let currentSearchQuery = '';
+        let currentActiveCallModalId = null;
+
+        const statTotalCalls = document.getElementById('statTotalCalls');
+        const statExotelCalls = document.getElementById('statExotelCalls');
+        const statWebCalls = document.getElementById('statWebCalls');
+        const statKeyStatus = document.getElementById('statKeyStatus');
+        const statKeyDesc = document.getElementById('statKeyDesc');
+        const callsTableBody = document.getElementById('callsTableBody');
+        const histSearchInput = document.getElementById('histSearchInput');
+        const refreshHistBtn = document.getElementById('refreshHistBtn');
+        const clearHistBtn = document.getElementById('clearHistBtn');
+
+        // Modal Elements
+        const chatModal = document.getElementById('chatModal');
+        const modalCallerNumber = document.getElementById('modalCallerNumber');
+        const modalChannelPill = document.getElementById('modalChannelPill');
+        const modalStatusPill = document.getElementById('modalStatusPill');
+        const modalCallMeta = document.getElementById('modalCallMeta');
+        const modalChatBody = document.getElementById('modalChatBody');
+        const modalTimestamp = document.getElementById('modalTimestamp');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const closeModalFooterBtn = document.getElementById('closeModalFooterBtn');
+        const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
+
+        // Format duration helper
+        function formatDurationSecs(secs) {
+            const s = Math.round(Number(secs) || 0);
+            if (s < 60) return `${s}s`;
+            const m = Math.floor(s / 60);
+            const rem = s % 60;
+            return `${m}m ${rem}s`;
+        }
+
+        // Format ISO date helper
+        function formatDateTime(isoStr) {
+            if (!isoStr) return '--';
+            try {
+                const d = new Date(isoStr);
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + 
+                    ' (' + d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ')';
+            } catch (_) {
+                return isoStr;
+            }
+        }
+
+        // Fetch Call History & System Analytics
+        async function fetchCallHistory(silent = false) {
+            if (!isAuthenticated || !getAuthToken()) return;
+            try {
+                const [callsRes, statsRes] = await Promise.all([
+                    authFetch(`${BACKEND_BASE}/api/calls?limit=100`),
+                    authFetch(`${BACKEND_BASE}/api/stats`),
+                ]);
+
+                if (callsRes.ok) {
+                    const callsData = await callsRes.json();
+                    allCallsList = callsData.calls || [];
+                    renderCallsTable();
+                }
+
+                if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    const cs = statsData.calls || {};
+                    const rot = statsData.rotator || {};
+
+                    statTotalCalls.textContent = cs.total_calls ?? allCallsList.length;
+                    statExotelCalls.textContent = cs.exotel_calls ?? 0;
+                    statWebCalls.textContent = cs.web_calls ?? 0;
+
+                    if (rot.total_keys !== undefined) {
+                        if (rot.total_keys === 0) {
+                            statKeyStatus.textContent = 'Single Key (.env)';
+                            statKeyDesc.textContent = 'GEMINI_API_KEY';
+                        } else {
+                            const cooling = rot.keys_cooling || 0;
+                            const active = rot.keys_active || rot.total_keys;
+                            statKeyStatus.textContent = `${active}/${rot.total_keys} Active Keys`;
+                            statKeyDesc.textContent = cooling > 0 ? `⚠️ ${cooling} cooling down (429)` : 'Round-robin rotated';
+                        }
+                    }
+                }
+
+                // If modal is open for a call that might be active, refresh its chat body
+                if (currentActiveCallModalId) {
+                    refreshOpenModalChat(currentActiveCallModalId);
+                }
+
+            } catch (err) {
+                if (!silent) console.error('Error fetching call history:', err);
+                if (callsTableBody && allCallsList.length === 0) {
+                    callsTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--orange); padding: 36px 16px;">
+                                <div style="font-size: 26px; margin-bottom: 8px;">⚠️</div>
+                                <div style="font-size: 14.5px; font-weight: 600; color: var(--ink);">Unable to Connect to Voice Server (:8765)</div>
+                                <div style="font-size: 12.5px; margin-top: 6px; color: var(--dim);">
+                                    Please open this dashboard at <a href="http://localhost:8765/" style="color: #60a5fa; text-decoration: underline; font-weight: 700;">http://localhost:8765/</a> in your browser.
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+        }
+
+        // Render Call Rows
+        function renderCallsTable() {
+            if (!callsTableBody) return;
+
+            // Filter by channel and search text
+            const filtered = allCallsList.filter(call => {
+                // Channel filter
+                if (currentCallFilter === 'exotel' && call.channel !== 'exotel') return false;
+                if (currentCallFilter === 'web' && call.channel !== 'web') return false;
+
+                // Search query
+                if (currentSearchQuery) {
+                    const q = currentSearchQuery.toLowerCase();
+                    const fromNum = (call.from_number || '').toLowerCase();
+                    const sid = (call.call_sid || '').toLowerCase();
+                    const id = (call.id || '').toLowerCase();
+                    if (!fromNum.includes(q) && !sid.includes(q) && !id.includes(q)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                callsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--dim); padding: 36px 16px;">
+                            <div style="font-size: 24px; margin-bottom: 8px;">📭</div>
+                            <div style="font-size: 13.5px; color: var(--ink);">No calls found matching criteria</div>
+                            <div style="font-size: 12px; margin-top: 4px;">Make a test call via Mic tab or call your Exotel phone number to record dialogues here.</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            callsTableBody.innerHTML = filtered.map(call => {
+                const isExotel = call.channel === 'exotel';
+                const channelBadge = isExotel
+                    ? `<span class="channel-pill exotel">📞 Exotel PSTN</span>`
+                    : `<span class="channel-pill web">🌐 Web Browser</span>`;
+                
+                const statusBadge = (call.status === 'in-progress' || call.status === 'active')
+                    ? `<span class="status-pill active">🟢 In Call</span>`
+                    : `<span class="status-pill completed">Completed</span>`;
+
+                const callerDisplay = call.from_number || (isExotel ? 'Phone Caller' : 'Web Visitor');
+                const callerBadgeClass = isExotel ? 'style="color: #60a5fa;"' : '';
+
+                return `
+                    <tr data-call-id="${call.id}">
+                        <td>
+                            <div class="phone-badge" ${callerBadgeClass}>
+                                ${isExotel ? '📱' : '💻'} ${escapeHtml(callerDisplay)}
+                            </div>
+                        </td>
+                        <td>${channelBadge}</td>
+                        <td style="font-family: var(--mono); font-size: 11.5px;">${formatDateTime(call.start_time)}</td>
+                        <td style="font-family: var(--mono);">${formatDurationSecs(call.duration_seconds)}</td>
+                        <td style="font-family: var(--mono); font-weight: 600;">${call.turn_count || 0}</td>
+                        <td>${statusBadge}</td>
+                        <td style="text-align: right;">
+                            <button class="btn-view-chat" onclick="openChatModal('${call.id}')">
+                                <span>💬 View Chat</span>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Open Chat Transcript Modal
+        window.openChatModal = async function(callId) {
+            currentActiveCallModalId = callId;
+            modalChatBody.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--dim);">
+                    <span>Loading conversation transcript...</span>
+                </div>
+            `;
+            chatModal.classList.add('show');
+
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/calls/${callId}`);
+                if (!res.ok) throw new Error('Could not load call details');
+                const call = await res.json();
+                renderModalData(call);
+            } catch (err) {
+                modalChatBody.innerHTML = `
+                    <div style="text-align: center; color: var(--red); padding: 30px;">
+                        Error loading transcript: ${err.message}
+                    </div>
+                `;
+            }
+        };
+
+        // Render Call Details into Open Modal
+        function renderModalData(call) {
+            const isExotel = call.channel === 'exotel';
+            modalCallerNumber.textContent = (isExotel ? '📱 ' : '💻 ') + (call.from_number || 'Caller');
+            modalChannelPill.className = `channel-pill ${isExotel ? 'exotel' : 'web'}`;
+            modalChannelPill.textContent = isExotel ? '📞 Exotel PSTN' : '🌐 Web Browser';
+            
+            modalStatusPill.className = `status-pill ${(call.status === 'in-progress' || call.status === 'active') ? 'active' : 'completed'}`;
+            modalStatusPill.textContent = (call.status === 'in-progress' || call.status === 'active') ? 'In-Progress' : 'Completed';
+
+            modalCallMeta.textContent = `Call ID: ${call.id} • Duration: ${formatDurationSecs(call.duration_seconds)} • Dialog Turns: ${call.turn_count || 0}`;
+            modalTimestamp.textContent = `Started: ${formatDateTime(call.start_time)}`;
+
+            const messages = call.messages || [];
+            if (messages.length === 0) {
+                modalChatBody.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--dim);">
+                        <div style="font-size: 28px; margin-bottom: 8px;">💬</div>
+                        <div>No speech messages recorded in this call session.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            modalChatBody.innerHTML = messages.map(msg => {
+                const isUser = msg.role === 'user';
+                const roleLabel = isUser 
+                    ? `👤 ${call.from_number || 'Caller'}` 
+                    : `🤖 Priya (IndiaWalls AI)`;
+                const timeStr = formatDateTime(msg.timestamp);
+
+                return `
+                    <div class="chat-row ${isUser ? 'user' : 'assistant'}">
+                        <div class="chat-meta">
+                            <span>${roleLabel}</span>
+                            <span>•</span>
+                            <span>${timeStr}</span>
+                        </div>
+                        <div class="chat-bubble">
+                            ${escapeHtml(msg.content)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Scroll to bottom of chat
+            modalChatBody.scrollTop = modalChatBody.scrollHeight;
+        }
+
+        // Periodically refresh modal if call is live
+        async function refreshOpenModalChat(callId) {
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/calls/${callId}`);
+                if (res.ok) {
+                    const call = await res.json();
+                    if (currentActiveCallModalId === callId) {
+                        renderModalData(call);
+                    }
+                }
+            } catch (_) {}
+        }
+
+        // Close Modal
+        function closeChatModal() {
+            currentActiveCallModalId = null;
+            chatModal.classList.remove('show');
+        }
+        closeModalBtn.addEventListener('click', closeChatModal);
+        closeModalFooterBtn.addEventListener('click', closeChatModal);
+        chatModal.addEventListener('click', (e) => {
+            if (e.target === chatModal) closeChatModal();
+        });
+
+        // Copy Transcript to Clipboard
+        copyTranscriptBtn.addEventListener('click', () => {
+            const rows = modalChatBody.querySelectorAll('.chat-row');
+            if (rows.length === 0) {
+                alert('No transcript to copy');
+                return;
+            }
+            let text = `--- IndiaWalls AI Call Transcript ---\n`;
+            text += `Caller: ${modalCallerNumber.textContent.trim()}\n`;
+            text += `${modalCallMeta.textContent.trim()}\n\n`;
+
+            rows.forEach(r => {
+                const meta = r.querySelector('.chat-meta')?.textContent.trim() || '';
+                const bubble = r.querySelector('.chat-bubble')?.textContent.trim() || '';
+                text += `${meta}:\n${bubble}\n\n`;
+            });
+
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = copyTranscriptBtn.textContent;
+                copyTranscriptBtn.textContent = '✅ Copied!';
+                setTimeout(() => { copyTranscriptBtn.textContent = originalText; }, 1800);
+            }).catch(() => {
+                alert('Failed to copy to clipboard');
+            });
+        });
+
+        // HTML escaping
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Filter button listeners
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCallFilter = btn.dataset.filter;
+                renderCallsTable();
+            });
+        });
+
+        // Search input
+        histSearchInput.addEventListener('input', (e) => {
+            currentSearchQuery = e.target.value.trim();
+            renderCallsTable();
+        });
+
+        // Refresh button
+        refreshHistBtn.addEventListener('click', () => {
+            refreshHistBtn.textContent = '↻ ...';
+            fetchCallHistory().finally(() => {
+                setTimeout(() => { refreshHistBtn.textContent = '↻ Refresh'; }, 400);
+            });
+        });
+
+        // Clear button
+        clearHistBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to clear all call history and transcripts? This cannot be undone.')) {
+                return;
+            }
+            try {
+                const res = await authFetch(`${BACKEND_BASE}/api/calls/clear`, { method: 'POST' });
+                if (res.ok) {
+                    allCallsList = [];
+                    renderCallsTable();
+                    statTotalCalls.textContent = '0';
+                    statExotelCalls.textContent = '0';
+                    statWebCalls.textContent = '0';
+                }
+            } catch (e) {
+                alert('Failed to clear calls: ' + e.message);
+            }
+        });
+
+        // Initialize Authentication on load
+        checkAdminAuth();
+
+        // Start background polling (only runs when authenticated)
+        setInterval(() => {
+            if (isAuthenticated) {
+                fetchCallHistory(true);
+            }
+        }, 3500);
+    </script>
+</body>
+
+</html>

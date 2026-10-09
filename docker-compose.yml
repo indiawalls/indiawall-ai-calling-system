@@ -1,0 +1,14 @@
+services:
+  indiawall-ai-calling-system:
+    build: .
+    container_name: indiawall-ai-calling-system
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 3000M

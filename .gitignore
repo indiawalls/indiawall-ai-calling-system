@@ -1,0 +1,34 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Environment Variables & Secrets
+.env
+backend/.env
+*.env.local
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Local Model Binaries (Download with scripts/download_models.py on server)
+models/indicconformer-hi/
+models/*
+!models/.gitkeep
+
+# Local Databases & Logs
+*.db
+*.sqlite3
+debug_audio/
+*.log
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
