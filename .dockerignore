@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.git/
+.env
+backend/.env
+*.env.local
+models/indicconformer-hi/
+*.db
+*.sqlite3
+debug_audio/
+.vscode/
+.idea/
