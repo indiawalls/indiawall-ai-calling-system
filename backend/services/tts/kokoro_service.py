@@ -112,7 +112,7 @@ class KokoroTTSService(TTSService):
                                 clean_text,
                                 voice=voice_data,
                                 speed=KOKORO_TTS_SPEED,
-                                split_pattern=r"[,!?;:।\n]+",
+                                split_pattern=r"[।!?\n]+",
                             ):
                                 if stop_event.is_set():
                                     break
@@ -133,9 +133,16 @@ class KokoroTTSService(TTSService):
                                             new_x = np.linspace(0, len(audio_np) - 1, new_len)
                                             audio_np = np.interp(new_x, old_x, audio_np).astype(np.float32)
 
-                                    boosted_audio = np.clip(audio_np * 1.45, -1.0, 1.0)
+                                    # Peak-safe audio gain without digital clipping/distortion
+                                    max_peak = float(np.max(np.abs(audio_np))) if len(audio_np) > 0 else 0.0
+                                    if max_peak > 0.01:
+                                        gain = min(1.25, 0.94 / max_peak)
+                                        clean_audio = audio_np * gain
+                                    else:
+                                        clean_audio = audio_np
+
                                     pcm_data = (
-                                        (boosted_audio * 32767)
+                                        (clean_audio * 32767)
                                         .astype(np.int16)
                                         .tobytes()
                                     )
