@@ -98,22 +98,22 @@ async def websocket_browser_endpoint(websocket: WebSocket):
     )
 
     # Smart Noise Gate & Echo Shield Pre-Filter:
-    # 1. Noise gate silences mic hiss / background noise < 0.03
-    # 2. While bot is speaking, speaker echo is blocked unless user speaks with HIGH volume (>= 0.35)
+    # 1. Noise gate silences mic hiss / fan background noise < 0.006 (leaves speech 100% untouched)
+    # 2. While bot speaks, speaker echo is blocked; loud barge-in commands (>= 0.10) pass through
     noise_filter = SmartNoiseAndEchoFilter(
-        noise_gate_threshold=0.03,
-        interrupt_threshold=0.35,
-        echo_tail_secs=0.30,
+        noise_gate_threshold=0.006,
+        interrupt_threshold=0.10,
+        echo_tail_secs=0.20,
     )
 
-    # Silero VAD – Tuned with high confidence & volume requirement so voice doesn't break
+    # Silero VAD – Calibrated for natural conversational speech
     vad_analyzer = SileroVADAnalyzer(
         sample_rate=16000,
         params=VADParams(
-            start_secs=0.28,   # 280ms sustained speech needed (rejects clicks/coughs)
-            stop_secs=0.45,    # Tolerance for natural mid-sentence pauses
-            confidence=0.72,   # High confidence required to prevent false triggers
-            min_volume=0.60,   # High volume threshold for intentional commands
+            start_secs=0.20,   # 200ms speech needed (responsive, natural)
+            stop_secs=0.35,    # 350ms natural pause tolerance
+            confidence=0.60,   # Natural speech confidence
+            min_volume=0.50,   # Normal conversational volume
         ),
     )
     vad = VADProcessor(vad_analyzer=vad_analyzer)
@@ -170,6 +170,7 @@ async def websocket_browser_endpoint(websocket: WebSocket):
     @user_aggregator.event_handler("on_user_turn_started")
     async def on_user_turn_started(aggregator, strategy):
         logger.info("User started speaking -> interrupting AI TTS")
+        noise_filter.set_bot_speaking(False)
         try:
             await websocket.send_text(json.dumps({"type": "interruption"}))
         except Exception:
@@ -301,22 +302,22 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
     )
 
     # Smart Noise Gate & Echo Shield Pre-Filter for Exotel phone stream:
-    # 1. Noise gate silences telephony line hiss & static < 0.025
-    # 2. While bot speaks, acoustic echo is blocked unless user gives a HIGH-VOLUME command (>= 0.32)
+    # 1. Noise gate silences telephony line hiss & static < 0.006 (leaves speech 100% untouched)
+    # 2. While bot speaks, acoustic echo is blocked; loud barge-in commands (>= 0.10) pass through
     noise_filter = SmartNoiseAndEchoFilter(
-        noise_gate_threshold=0.025,
-        interrupt_threshold=0.32,
-        echo_tail_secs=0.35,
+        noise_gate_threshold=0.006,
+        interrupt_threshold=0.10,
+        echo_tail_secs=0.20,
     )
 
     # Silero VAD – Calibrated for 8kHz telephony audio to prevent broken speech
     vad_analyzer = SileroVADAnalyzer(
         sample_rate=16000,
         params=VADParams(
-            start_secs=0.28,   # 280ms sustained speech needed (rejects line clicks/breaths)
-            stop_secs=0.45,    # Phone pause tolerance
-            confidence=0.72,   # Rejects telephony background static
-            min_volume=0.55,   # High volume threshold for intentional commands
+            start_secs=0.20,   # 200ms sustained speech
+            stop_secs=0.35,    # Natural phone pause tolerance
+            confidence=0.60,   # Natural phone speech confidence
+            min_volume=0.45,   # Phone conversational volume
         ),
     )
     vad = VADProcessor(vad_analyzer=vad_analyzer)
@@ -370,6 +371,7 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
     @user_aggregator.event_handler("on_user_turn_started")
     async def on_exotel_user_turn_started(aggregator, strategy):
         logger.info(f"Exotel caller started speaking ({strategy.__class__.__name__}) -> barge-in triggered")
+        noise_filter.set_bot_speaking(False)
 
     @user_aggregator.event_handler("on_user_turn_stopped")
     async def on_exotel_user_transcript(aggregator, strategy, message):

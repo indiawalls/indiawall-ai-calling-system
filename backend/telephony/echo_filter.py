@@ -3,6 +3,7 @@ Smart Noise Suppression & Echo Filter for Pipecat.
 - Eliminates microphone background noise (fans, hum, breath) with a dynamic noise gate.
 - Suppresses speaker acoustic echo while AI assistant is speaking to prevent broken responses.
 - Allows HIGH-VOLUME commands (e.g., loud 'रुको', 'सुनो') to intentionally interrupt the AI.
+- Automatically resets echo shield on interruption/cancellation so bot never gets stuck deaf.
 """
 
 import logging
@@ -10,10 +11,14 @@ import time
 import numpy as np
 
 from pipecat.frames.frames import (
+    BotInterruptionFrame,
     BotStartedSpeakingFrame,
     BotStoppedSpeakingFrame,
+    CancelFrame,
     Frame,
     InputAudioRawFrame,
+    InterruptionFrame,
+    StartInterruptionFrame,
     TTSStartedFrame,
     TTSStoppedFrame,
 )
@@ -29,13 +34,14 @@ class SmartNoiseAndEchoFilter(FrameProcessor):
     2. Echo Cancellation: When bot is speaking, blocks incoming echo so AI voice never breaks itself.
     3. High-Volume Barge-In: If user speaks firmly/loudly (above interrupt_threshold), passes audio
        through so intentional commands ('रुको', 'सुनो') interrupt the bot cleanly.
+    4. Auto-Reset: Immediately disarms echo shield upon any interruption or user turn start.
     """
 
     def __init__(
         self,
-        noise_gate_threshold: float = 0.025,
-        interrupt_threshold: float = 0.32,
-        echo_tail_secs: float = 0.30,
+        noise_gate_threshold: float = 0.006,
+        interrupt_threshold: float = 0.10,
+        echo_tail_secs: float = 0.20,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -57,13 +63,23 @@ class SmartNoiseAndEchoFilter(FrameProcessor):
 
         if isinstance(frame, (BotStartedSpeakingFrame, TTSStartedFrame)):
             self._bot_speaking = True
-            logger.debug("SmartFilter: Bot speaking -> activating echo shield")
+            logger.debug("SmartFilter: Bot started speaking -> echo shield armed")
             await self.push_frame(frame, direction)
 
-        elif isinstance(frame, (BotStoppedSpeakingFrame, TTSStoppedFrame)):
+        elif isinstance(
+            frame,
+            (
+                BotStoppedSpeakingFrame,
+                TTSStoppedFrame,
+                BotInterruptionFrame,
+                InterruptionFrame,
+                StartInterruptionFrame,
+                CancelFrame,
+            ),
+        ):
             self._bot_speaking = False
             self._bot_stopped_time = time.time()
-            logger.debug("SmartFilter: Bot stopped speaking -> echo hangover active")
+            logger.debug("SmartFilter: Bot stopped/interrupted -> echo shield disarmed")
             await self.push_frame(frame, direction)
 
         elif isinstance(frame, InputAudioRawFrame):
@@ -78,12 +94,13 @@ class SmartNoiseAndEchoFilter(FrameProcessor):
             is_echo_window = self._bot_speaking or (time.time() - self._bot_stopped_time < self._echo_tail_secs)
 
             if is_echo_window:
-                # Bot is speaking: only pass if user speaks with HIGH volume (intentional interruption)
+                # Bot is currently speaking:
+                # Only pass through if user speaks firmly/loudly (barge-in command like "रुको" / "सुनो")
                 if rms >= self._interrupt_threshold:
-                    logger.info(f"SmartFilter: High-volume command detected during playback (vol={rms:.2f}) -> allowing barge-in")
+                    logger.info(f"SmartFilter: High-volume command detected during playback (RMS={rms:.2f} >= {self._interrupt_threshold:.2f}) -> allowing barge-in")
                     await self.push_frame(frame, direction)
                 else:
-                    # Echo / ambient noise: silence frame to keep AI voice playing unbroken
+                    # Echo / ambient noise: replace with silence to prevent bot from interrupting itself
                     silent_audio = b"\x00" * len(frame.audio)
                     await self.push_frame(
                         InputAudioRawFrame(
@@ -94,8 +111,9 @@ class SmartNoiseAndEchoFilter(FrameProcessor):
                         direction,
                     )
             else:
-                # Bot is quiet: apply noise gate to filter out ambient room hiss / breath
+                # Bot is quiet: pass normal user speech through to VAD & STT
                 if rms < self._noise_gate_threshold:
+                    # Only complete room silence/mic hiss is muted
                     silent_audio = b"\x00" * len(frame.audio)
                     await self.push_frame(
                         InputAudioRawFrame(
