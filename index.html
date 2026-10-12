@@ -2793,6 +2793,14 @@
             updateAudioDevices();
         }
 
+        if (speakerSelect) {
+            speakerSelect.addEventListener('change', async () => {
+                if (audioCtx && audioCtx.setSinkId && speakerSelect.value && speakerSelect.value !== 'default') {
+                    try { await audioCtx.setSinkId(speakerSelect.value); } catch (_) {}
+                }
+            });
+        }
+
         let scheduledAudioTime = 0;
         let activeAudioSources = [];
 
@@ -2814,13 +2822,6 @@
             if (!audioCtx || audioCtx.state === 'closed') return;
             if (audioCtx.state === 'suspended') {
                 try { audioCtx.resume(); } catch (_) {}
-            }
-
-            // Route to selected speaker / AirPods if supported
-            if (speakerSelect && speakerSelect.value && audioCtx.setSinkId) {
-                try {
-                    audioCtx.setSinkId(speakerSelect.value);
-                } catch (_) {}
             }
 
             const int16 = new Int16Array(pcmBuffer);
@@ -2982,6 +2983,22 @@
                     procNode.onaudioprocess = (e) => {
                         if (!isCallActive || !ws || ws.readyState !== WebSocket.OPEN) return;
                         const inputChannel = e.inputBuffer.getChannelData(0);
+
+                        // Smart Acoustic Echo Shield:
+                        // While AI is actively speaking out of the user's speakers (isPlaying === true),
+                        // filter out laptop speaker feedback so AI speech is NEVER cut off by its own voice.
+                        // Only pass through intentional loud commands (barge-in RMS >= 0.12).
+                        if (isPlaying) {
+                            let sum = 0;
+                            for (let i = 0; i < inputChannel.length; i++) {
+                                sum += inputChannel[i] * inputChannel[i];
+                            }
+                            const rms = Math.sqrt(sum / inputChannel.length);
+                            if (rms < 0.12) {
+                                return; // Suppress speaker feedback
+                            }
+                        }
+
                         const pcmBuffer = downsampleTo16k(inputChannel, actualRate);
                         ws.send(pcmBuffer);
                     };
