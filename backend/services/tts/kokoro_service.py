@@ -112,7 +112,7 @@ class KokoroTTSService(TTSService):
                                 clean_text,
                                 voice=voice_data,
                                 speed=KOKORO_TTS_SPEED,
-                                split_pattern=r"[।!?\n]+",
+                                split_pattern=r"[।!?.,\n]+",
                             ):
                                 if stop_event.is_set():
                                     break

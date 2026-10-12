@@ -85,7 +85,7 @@ async def websocket_browser_endpoint(websocket: WebSocket):
     )
     logger.info(f"Started web call session {call_id} for {caller_name}")
 
-    # Transport (16kHz in, 24kHz out)
+    # Transport (16kHz in, 24kHz out, 100ms output chunks for low latency)
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
         params=FastAPIWebsocketParams(
@@ -93,6 +93,7 @@ async def websocket_browser_endpoint(websocket: WebSocket):
             audio_out_enabled=True,
             audio_in_sample_rate=16000,
             audio_out_sample_rate=24000,
+            audio_out_10ms_chunks=10,
             serializer=RawAudioFrameSerializer(sample_rate=16000),
         ),
     )
@@ -148,14 +149,13 @@ async def websocket_browser_endpoint(websocket: WebSocket):
     if LLM_BACKEND != "gemini":
         context.add_message({"role": "system", "content": INDIAWALLS_SYSTEM_PROMPT})
 
-    # VAD barge-in: when user speaks loud enough (passes min_volume threshold),
-    # immediately stop AI response and prepare a new one from user's input.
+    # VAD barge-in: fast 0.45s turn stop timeout for conversational response speed
     user_turn_strategies = UserTurnStrategies(
         start=[
             VADUserTurnStartStrategy(enable_interruptions=True),
             TranscriptionUserTurnStartStrategy(enable_interruptions=True),
         ],
-        stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.80)],
+        stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.45)],
     )
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
@@ -163,7 +163,7 @@ async def websocket_browser_endpoint(websocket: WebSocket):
         user_params=LLMUserAggregatorParams(
             vad_analyzer=None,
             user_turn_strategies=user_turn_strategies,
-            user_turn_stop_timeout=0.80,
+            user_turn_stop_timeout=0.45,
         ),
     )
 
@@ -349,14 +349,13 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
     if LLM_BACKEND != "gemini":
         context.add_message({"role": "system", "content": INDIAWALLS_SYSTEM_PROMPT})
 
-    # VAD barge-in: when user speaks loud enough (passes min_volume threshold),
-    # immediately stop AI response and prepare a new one from user's input.
+    # VAD barge-in: fast 0.50s turn stop timeout for telephony response speed
     user_turn_strategies = UserTurnStrategies(
         start=[
             VADUserTurnStartStrategy(enable_interruptions=True),
             TranscriptionUserTurnStartStrategy(enable_interruptions=True),
         ],
-        stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.80)],
+        stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.50)],
     )
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
@@ -364,7 +363,7 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
         user_params=LLMUserAggregatorParams(
             vad_analyzer=None,
             user_turn_strategies=user_turn_strategies,
-            user_turn_stop_timeout=0.80,
+            user_turn_stop_timeout=0.50,
         ),
     )
 

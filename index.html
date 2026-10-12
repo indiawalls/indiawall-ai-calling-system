@@ -2793,45 +2793,39 @@
             updateAudioDevices();
         }
 
+        let scheduledAudioTime = 0;
+        let activeAudioSources = [];
+
         function stopAudioPlayback() {
             playbackQueue = [];
-            if (currentAudioSource) {
+            for (let i = 0; i < activeAudioSources.length; i++) {
                 try {
-                    currentAudioSource.onended = null;
-                    currentAudioSource.stop();
+                    activeAudioSources[i].onended = null;
+                    activeAudioSources[i].stop();
                 } catch (_) {}
-                currentAudioSource = null;
             }
+            activeAudioSources = [];
+            currentAudioSource = null;
             isPlaying = false;
+            scheduledAudioTime = 0;
         }
 
         function queueAudio(pcmBuffer) {
-            playbackQueue.push(pcmBuffer);
-            if (!isPlaying) playQueue();
-        }
-
-        async function playQueue() {
-            if (playbackQueue.length === 0) {
-                isPlaying = false;
-                currentAudioSource = null;
-                return;
-            }
-            isPlaying = true;
-            const pcm = playbackQueue.shift();
             if (!audioCtx || audioCtx.state === 'closed') return;
-
             if (audioCtx.state === 'suspended') {
-                try { await audioCtx.resume(); } catch (_) {}
+                try { audioCtx.resume(); } catch (_) {}
             }
 
             // Route to selected speaker / AirPods if supported
             if (speakerSelect && speakerSelect.value && audioCtx.setSinkId) {
                 try {
-                    await audioCtx.setSinkId(speakerSelect.value);
+                    audioCtx.setSinkId(speakerSelect.value);
                 } catch (_) {}
             }
 
-            const int16 = new Int16Array(pcm);
+            const int16 = new Int16Array(pcmBuffer);
+            if (int16.length === 0) return;
+
             const float32 = new Float32Array(int16.length);
             for (let i = 0; i < int16.length; i++) {
                 float32[i] = int16[i] / 32768;
@@ -2841,16 +2835,31 @@
             buf.getChannelData(0).set(float32);
 
             const src = audioCtx.createBufferSource();
-            currentAudioSource = src;
             src.buffer = buf;
             src.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            // Seamless scheduling: chain directly onto previous chunk's exact sample end
+            if (scheduledAudioTime < now) {
+                scheduledAudioTime = now + 0.02; // Minimal 20ms jitter buffer
+            }
+
+            src.start(scheduledAudioTime);
+            scheduledAudioTime += buf.duration;
+
+            activeAudioSources.push(src);
+            currentAudioSource = src;
+            isPlaying = true;
+
             src.onended = () => {
-                if (currentAudioSource === src) {
+                const idx = activeAudioSources.indexOf(src);
+                if (idx !== -1) activeAudioSources.splice(idx, 1);
+                if (activeAudioSources.length === 0 && audioCtx.currentTime >= scheduledAudioTime) {
+                    isPlaying = false;
                     currentAudioSource = null;
-                    playQueue();
+                    scheduledAudioTime = 0;
                 }
             };
-            src.start();
         }
 
         // ── Audio Resampler to 16000Hz Mono PCM ──
