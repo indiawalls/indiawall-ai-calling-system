@@ -51,6 +51,7 @@ import backend.database as db
 from backend.knowledge import INDIAWALLS_SYSTEM_PROMPT
 from backend.services.llm import create_pipecat_llm_service
 from backend.services.stt import SherpaOnnxSTTService
+from backend.services.tts import KokoroTTSService
 from backend.telephony import (
     ExotelFrameSerializer,
     RawAudioFrameSerializer,
