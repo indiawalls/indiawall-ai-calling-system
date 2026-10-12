@@ -51,10 +51,10 @@ import backend.database as db
 from backend.knowledge import INDIAWALLS_SYSTEM_PROMPT
 from backend.services.llm import create_pipecat_llm_service
 from backend.services.stt import SherpaOnnxSTTService
-from backend.services.tts import KokoroTTSService
 from backend.telephony import (
     ExotelFrameSerializer,
     RawAudioFrameSerializer,
+    SmartNoiseAndEchoFilter,
 )
 
 logger = logging.getLogger("hindi-ai-calling.api.ws")
@@ -96,14 +96,23 @@ async def websocket_browser_endpoint(websocket: WebSocket):
         ),
     )
 
-    # Silero VAD – Balanced for browser mic (normal speaking voice)
+    # Smart Noise Gate & Echo Shield Pre-Filter:
+    # 1. Noise gate silences mic hiss / background noise < 0.03
+    # 2. While bot is speaking, speaker echo is blocked unless user speaks with HIGH volume (>= 0.35)
+    noise_filter = SmartNoiseAndEchoFilter(
+        noise_gate_threshold=0.03,
+        interrupt_threshold=0.35,
+        echo_tail_secs=0.30,
+    )
+
+    # Silero VAD – Tuned with high confidence & volume requirement so voice doesn't break
     vad_analyzer = SileroVADAnalyzer(
         sample_rate=16000,
         params=VADParams(
-            start_secs=0.20,   # 200ms sustained speech needed to trigger
-            stop_secs=0.30,    # Allow natural mid-sentence pauses
-            confidence=0.60,   # Balanced: rejects noise, catches normal speech
-            min_volume=0.50,   # Normal conversational volume threshold
+            start_secs=0.28,   # 280ms sustained speech needed (rejects clicks/coughs)
+            stop_secs=0.45,    # Tolerance for natural mid-sentence pauses
+            confidence=0.72,   # High confidence required to prevent false triggers
+            min_volume=0.60,   # High volume threshold for intentional commands
         ),
     )
     vad = VADProcessor(vad_analyzer=vad_analyzer)
@@ -178,9 +187,15 @@ async def websocket_browser_endpoint(websocket: WebSocket):
         except Exception:
             pass
 
+    @assistant_aggregator.event_handler("on_assistant_turn_started")
+    async def on_assistant_turn_started(aggregator):
+        logger.debug("AI speech started -> activating echo shield")
+        noise_filter.set_bot_speaking(True)
+
     @assistant_aggregator.event_handler("on_assistant_turn_stopped")
     async def on_assistant_turn_stopped(aggregator, message):
         logger.info(f"AI transcript: '{message.content}'")
+        noise_filter.set_bot_speaking(False)
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="assistant", content=message.content.strip())
         try:
@@ -194,6 +209,7 @@ async def websocket_browser_endpoint(websocket: WebSocket):
     pipeline = Pipeline(
         [
             transport.input(),
+            noise_filter,
             vad,
             stt,
             user_aggregator,
@@ -283,14 +299,23 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
         ),
     )
 
-    # Silero VAD – Balanced for phone audio (8kHz codec, slightly lower volume)
+    # Smart Noise Gate & Echo Shield Pre-Filter for Exotel phone stream:
+    # 1. Noise gate silences telephony line hiss & static < 0.025
+    # 2. While bot speaks, acoustic echo is blocked unless user gives a HIGH-VOLUME command (>= 0.32)
+    noise_filter = SmartNoiseAndEchoFilter(
+        noise_gate_threshold=0.025,
+        interrupt_threshold=0.32,
+        echo_tail_secs=0.35,
+    )
+
+    # Silero VAD – Calibrated for 8kHz telephony audio to prevent broken speech
     vad_analyzer = SileroVADAnalyzer(
         sample_rate=16000,
         params=VADParams(
-            start_secs=0.20,   # 200ms sustained speech needed to trigger
-            stop_secs=0.30,    # Natural pause tolerance
-            confidence=0.60,   # Balanced: rejects codec noise, catches normal speech
-            min_volume=0.45,   # Mid-range: normal phone voice (not shouting, not whisper)
+            start_secs=0.28,   # 280ms sustained speech needed (rejects line clicks/breaths)
+            stop_secs=0.45,    # Phone pause tolerance
+            confidence=0.72,   # Rejects telephony background static
+            min_volume=0.55,   # High volume threshold for intentional commands
         ),
     )
     vad = VADProcessor(vad_analyzer=vad_analyzer)
@@ -351,15 +376,22 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="user", content=message.content.strip())
 
+    @assistant_aggregator.event_handler("on_assistant_turn_started")
+    async def on_exotel_assistant_turn_started(aggregator):
+        logger.debug("Exotel AI speech started -> activating echo shield")
+        noise_filter.set_bot_speaking(True)
+
     @assistant_aggregator.event_handler("on_assistant_turn_stopped")
     async def on_exotel_ai_transcript(aggregator, message):
         logger.info(f"Exotel AI Speech: '{message.content}'")
+        noise_filter.set_bot_speaking(False)
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="assistant", content=message.content.strip())
 
     pipeline = Pipeline(
         [
             transport.input(),
+            noise_filter,
             vad,
             stt,
             user_aggregator,
