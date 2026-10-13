@@ -24,7 +24,7 @@ COPY backend/ ./backend/
 COPY scripts/ ./scripts/
 COPY index.html .
 COPY server.py .
-COPY "IndiaWalls RAG Knowledge Base.md" .
+COPY ["IndiaWalls RAG Knowledge Base.md", "."]
 COPY ARCHITECTURE.md .
 
 # Download STT models
