@@ -44,6 +44,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 50m
           script_stop: true
           script: |
             set -e
