@@ -14,13 +14,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# 1. Install lightweight PyTorch CPU first (saves ~8GB of NVIDIA CUDA bloat)
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+# Upgrade pip and packaging tools for modern wheel resolution
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# 2. Install remaining Python dependencies
+# Install lightweight PyTorch CPU (--extra-index-url preserves PyPI for flit_core and dependencies)
+RUN pip install --no-cache-dir torch --extra-index-url https://download.pytorch.org/whl/cpu
+
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
 # 3. Copy application code and assets
 COPY assets/ ./assets/
 COPY backend/ ./backend/
