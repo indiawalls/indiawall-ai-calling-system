@@ -39,7 +39,7 @@ GROQ_LLM_MODEL = os.environ.get("GROQ_LLM_MODEL", "qwen/qwen3.8-27b")
 KOKORO_MODE = os.environ.get("KOKORO_MODE", "inproc").lower()
 KOKORO_TTS_URL = os.environ.get("KOKORO_TTS_URL", "http://localhost:8880").rstrip("/")
 KOKORO_TTS_VOICE = os.environ.get("KOKORO_TTS_VOICE", "hf_alpha")
-KOKORO_TTS_SPEED = float(os.environ.get("KOKORO_TTS_SPEED", "1.35"))
+KOKORO_TTS_SPEED = float(os.environ.get("KOKORO_TTS_SPEED", "1.15"))
 
 # Speech-to-Text (STT): "local" (IndicConformer CTC) or "groq" (Whisper)
 STT_BACKEND = os.environ.get("STT_BACKEND", "local").lower()

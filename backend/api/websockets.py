@@ -11,6 +11,7 @@ import uuid
 from fastapi import APIRouter, Request, Response, WebSocket
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.frames.frames import TTSAudioRawFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -52,11 +53,13 @@ from backend.knowledge import INDIAWALLS_SYSTEM_PROMPT
 from backend.services.llm import create_pipecat_llm_service
 from backend.services.stt import SherpaOnnxSTTService
 from backend.services.tts import KokoroTTSService
+from backend.services.vad import DebugSileroVADAnalyzer
 from backend.telephony import (
     ExotelFrameSerializer,
     RawAudioFrameSerializer,
     SmartNoiseAndEchoFilter,
 )
+from backend.telephony.filler import get_filler_audio_16k, get_filler_audio_24k
 
 logger = logging.getLogger("hindi-ai-calling.api.ws")
 
@@ -99,23 +102,24 @@ async def websocket_browser_endpoint(websocket: WebSocket):
     )
 
     # Smart Noise Gate & Echo Shield Pre-Filter:
-    # 1. Noise gate silences mic hiss / fan background noise < 0.006 (leaves speech 100% untouched)
-    # 2. While bot speaks, speaker echo is blocked; loud barge-in commands (>= 0.10) pass through
+    # 1. Noise gate silences mic hiss / fan background noise < 0.008
+    # 2. While bot speaks, speaker echo is blocked; loud barge-in commands (>= 0.32) pass through
     noise_filter = SmartNoiseAndEchoFilter(
-        noise_gate_threshold=0.006,
-        interrupt_threshold=0.10,
-        echo_tail_secs=0.20,
+        noise_gate_threshold=0.008,
+        interrupt_threshold=0.25,
+        echo_tail_secs=0.35,
     )
 
-    # Silero VAD – Calibrated for natural conversational speech
-    vad_analyzer = SileroVADAnalyzer(
+    # Silero VAD – High sensitivity for natural conversational speech with live stream logging
+    vad_analyzer = DebugSileroVADAnalyzer(
         sample_rate=16000,
         params=VADParams(
-            start_secs=0.20,   # 200ms speech needed (responsive, natural)
-            stop_secs=0.35,    # 350ms natural pause tolerance
-            confidence=0.60,   # Natural speech confidence
-            min_volume=0.50,   # Normal conversational volume
+            start_secs=0.15,   # 150ms speech needed
+            stop_secs=0.35,    # 350ms natural conversational pause tolerance
+            confidence=0.35,   # Neural speech confidence (high sensitivity for natural mic voice)
+            min_volume=0.0,    # Fully rely on Silero neural network to classify human voice
         ),
+        label="Browser Mic",
     )
     vad = VADProcessor(vad_analyzer=vad_analyzer)
 
@@ -135,8 +139,8 @@ async def websocket_browser_endpoint(websocket: WebSocket):
             ),
         )
 
-    # LLM & TTS (low temperature for focused responses, 100 tokens for 20-40 word answers)
-    llm = create_pipecat_llm_service(INDIAWALLS_SYSTEM_PROMPT, temperature=0.3, max_tokens=100)
+    # LLM & TTS (low temperature for focused responses, 160 tokens for 30-45 word helpful answers)
+    llm = create_pipecat_llm_service(INDIAWALLS_SYSTEM_PROMPT, temperature=0.3, max_tokens=160)
     tts = KokoroTTSService(
         mode=KOKORO_MODE,
         base_url=KOKORO_TTS_URL,
@@ -146,10 +150,9 @@ async def websocket_browser_endpoint(websocket: WebSocket):
 
     # Context & Aggregators
     context = LLMContext()
-    if LLM_BACKEND != "gemini":
-        context.add_message({"role": "system", "content": INDIAWALLS_SYSTEM_PROMPT})
+    context.add_message({"role": "system", "content": INDIAWALLS_SYSTEM_PROMPT})
 
-    # VAD barge-in: fast 0.45s turn stop timeout for conversational response speed
+    # VAD barge-in: 0.45s speech stop timeout allows natural full sentences without mid-speech cuts
     user_turn_strategies = UserTurnStrategies(
         start=[
             VADUserTurnStartStrategy(enable_interruptions=True),
@@ -163,7 +166,7 @@ async def websocket_browser_endpoint(websocket: WebSocket):
         user_params=LLMUserAggregatorParams(
             vad_analyzer=None,
             user_turn_strategies=user_turn_strategies,
-            user_turn_stop_timeout=0.45,
+            user_turn_stop_timeout=0.50,
         ),
     )
 
@@ -181,6 +184,15 @@ async def websocket_browser_endpoint(websocket: WebSocket):
         logger.info(f"User transcript: '{message.content}'")
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="user", content=message.content.strip())
+            filler = get_filler_audio_24k()
+            if filler:
+                try:
+                    logger.info("Playing instant acknowledgment filler 'जी सर,' to web client (<200ms latency mask)")
+                    await transport.output().send_audio(
+                        TTSAudioRawFrame(audio=filler, sample_rate=24000, num_channels=1)
+                    )
+                except Exception as ex:
+                    logger.warning(f"Could not send web filler audio: {ex}")
         try:
             await websocket.send_text(json.dumps({
                 "type": "transcript",
@@ -197,7 +209,8 @@ async def websocket_browser_endpoint(websocket: WebSocket):
     @assistant_aggregator.event_handler("on_assistant_turn_stopped")
     async def on_assistant_turn_stopped(aggregator, message):
         logger.info(f"AI transcript: '{message.content}'")
-        noise_filter.set_bot_speaking(False)
+        # Note: Do not disarm noise_filter here; the echo shield must stay active until
+        # actual audio output playback finishes via BotStoppedSpeakingFrame.
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="assistant", content=message.content.strip())
         try:
@@ -301,24 +314,16 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
         ),
     )
 
-    # Smart Noise Gate & Echo Shield Pre-Filter for Exotel phone stream:
-    # 1. Noise gate silences telephony line hiss & static < 0.006 (leaves speech 100% untouched)
-    # 2. While bot speaks, acoustic echo is blocked; loud barge-in commands (>= 0.10) pass through
-    noise_filter = SmartNoiseAndEchoFilter(
-        noise_gate_threshold=0.006,
-        interrupt_threshold=0.10,
-        echo_tail_secs=0.20,
-    )
-
-    # Silero VAD – Calibrated for 8kHz telephony audio to prevent broken speech
-    vad_analyzer = SileroVADAnalyzer(
+    # Silero VAD – High sensitivity for telephony audio with live stream logging
+    vad_analyzer = DebugSileroVADAnalyzer(
         sample_rate=16000,
         params=VADParams(
-            start_secs=0.20,   # 200ms sustained speech
-            stop_secs=0.35,    # Natural phone pause tolerance
-            confidence=0.60,   # Natural phone speech confidence
-            min_volume=0.45,   # Phone conversational volume
+            start_secs=0.15,   # 150ms speech needed
+            stop_secs=0.35,    # 350ms natural phone pause tolerance
+            confidence=0.35,   # Neural speech confidence (high sensitivity for phone voice)
+            min_volume=0.0,    # Fully rely on Silero neural network to classify human voice
         ),
+        label="Exotel Phone",
     )
     vad = VADProcessor(vad_analyzer=vad_analyzer)
 
@@ -337,7 +342,7 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
             ),
         )
 
-    llm = create_pipecat_llm_service(INDIAWALLS_SYSTEM_PROMPT, temperature=0.3, max_tokens=100)
+    llm = create_pipecat_llm_service(INDIAWALLS_SYSTEM_PROMPT, temperature=0.3, max_tokens=160)
     tts = KokoroTTSService(
         mode=KOKORO_MODE,
         base_url=KOKORO_TTS_URL,
@@ -346,16 +351,15 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
     )
 
     context = LLMContext()
-    if LLM_BACKEND != "gemini":
-        context.add_message({"role": "system", "content": INDIAWALLS_SYSTEM_PROMPT})
+    context.add_message({"role": "system", "content": INDIAWALLS_SYSTEM_PROMPT})
 
-    # VAD barge-in: fast 0.50s turn stop timeout for telephony response speed
+    # VAD barge-in: 0.45s speech stop timeout allows natural full sentences on phone calls
     user_turn_strategies = UserTurnStrategies(
         start=[
             VADUserTurnStartStrategy(enable_interruptions=True),
             TranscriptionUserTurnStartStrategy(enable_interruptions=True),
         ],
-        stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.50)],
+        stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.45)],
     )
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
@@ -370,30 +374,39 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
     @user_aggregator.event_handler("on_user_turn_started")
     async def on_exotel_user_turn_started(aggregator, strategy):
         logger.info(f"Exotel caller started speaking ({strategy.__class__.__name__}) -> barge-in triggered")
-        noise_filter.set_bot_speaking(False)
 
     @user_aggregator.event_handler("on_user_turn_stopped")
     async def on_exotel_user_transcript(aggregator, strategy, message):
         logger.info(f"Exotel Phone Caller: '{message.content}'")
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="user", content=message.content.strip())
+            filler = get_filler_audio_16k()
+            if filler:
+                try:
+                    logger.info(f"Playing instant acknowledgment filler 'जी सर,' to phone caller (<200ms latency mask, {len(filler)} bytes)")
+                    await transport.output().send_audio(
+                        TTSAudioRawFrame(
+                            audio=filler,
+                            sample_rate=16000,
+                            num_channels=1,
+                        )
+                    )
+                except Exception as ex:
+                    logger.warning(f"Could not send phone filler audio: {ex}")
 
     @assistant_aggregator.event_handler("on_assistant_turn_started")
     async def on_exotel_assistant_turn_started(aggregator):
-        logger.debug("Exotel AI speech started -> activating echo shield")
-        noise_filter.set_bot_speaking(True)
+        logger.debug("Exotel AI speech started")
 
     @assistant_aggregator.event_handler("on_assistant_turn_stopped")
     async def on_exotel_ai_transcript(aggregator, message):
         logger.info(f"Exotel AI Speech: '{message.content}'")
-        noise_filter.set_bot_speaking(False)
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="assistant", content=message.content.strip())
 
     pipeline = Pipeline(
         [
             transport.input(),
-            noise_filter,
             vad,
             stt,
             user_aggregator,
