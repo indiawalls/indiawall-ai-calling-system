@@ -14,11 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# 1. Install lightweight PyTorch CPU first (saves ~8GB of NVIDIA CUDA bloat)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# 2. Install remaining Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source code and assets
+# 3. Copy application code and assets
 COPY assets/ ./assets/
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
@@ -27,7 +30,7 @@ COPY server.py .
 COPY ["IndiaWalls RAG Knowledge Base.md", "."]
 COPY ARCHITECTURE.md .
 
-# Download STT models
+# 4. Download local STT models
 RUN python scripts/download_models.py
 
 EXPOSE 8765
