@@ -12,12 +12,27 @@ import asyncio
 import io
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import AsyncGenerator, Optional
 import wave
 
 import numpy as np
+
+
+def _clean_telephony_hindi_text(text: str) -> str:
+    """Correct frequent phonetic CTC misclassifications in telephony Hindi."""
+    if not text:
+        return text
+    # CTC acoustic confusion: "kis lipi" -> "kis type"
+    text = re.sub(r"(किस\s+)लिपि", r"\1टाइप", text)
+    text = re.sub(r"(किस\s+)लिपी", r"\1टाइप", text)
+    text = re.sub(r"लिपि(\s+क[ीाे])", r"टाइप\1", text)
+    text = re.sub(r"लिपी(\s+क[ीाे])", r"टाइप\1", text)
+    text = re.sub(r"\bवल्स\b", "वॉल्स", text)
+    text = re.sub(r"\bवालस\b", "वॉल्स", text)
+    return text
 
 from pipecat.frames.frames import ErrorFrame, Frame, TranscriptionFrame
 from pipecat.services.stt_service import SegmentedSTTService
@@ -141,7 +156,10 @@ class SherpaOnnxSTTService(SegmentedSTTService):
                 self._recognizer.decode_stream(stream)
                 return stream.result.text.strip() if stream.result.text else ""
 
+            logger.info(f"STT (IndicConformer) processing {audio_duration}s audio segment...")
             text = await loop.run_in_executor(None, _decode)
+            if text:
+                text = _clean_telephony_hindi_text(text)
             stt_elapsed = round((time.time() - t0) * 1000)
             await self.stop_processing_metrics()
 
@@ -165,7 +183,7 @@ class SherpaOnnxSTTService(SegmentedSTTService):
                 if text:
                     logger.info(f"STT (IndicConformer) ignored noise artifact in {stt_elapsed}ms: [{text}]")
                 else:
-                    logger.debug(f"STT (IndicConformer) finished in {stt_elapsed}ms ({audio_duration}s audio): [empty]")
+                    logger.info(f"STT (IndicConformer) finished in {stt_elapsed}ms ({audio_duration}s audio): [empty / no words recognized]")
 
         except Exception as e:
             logger.error(f"Sherpa-ONNX STT error: {e}", exc_info=True)

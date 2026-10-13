@@ -43,7 +43,12 @@ def normalize_text_for_hindi_tts(text: str) -> str:
     text = re.sub(r"[\*\_#`~|>]+", " ", text)
     text = re.sub(r"^\s*[-•*]\s*", "", text, flags=re.MULTILINE)
 
-    # 2. Normalize Email
+    # 2. Normalize Websites & URLs
+    text = re.sub(r"https?://(?:www\.)?indiawalls\.in/?", "इंडिया वाल्स डॉट इन", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b(?:www\.)?indiawalls\.in\b", "इंडिया वाल्स डॉट इन", text, flags=re.IGNORECASE)
+    text = re.sub(r"https?://[a-zA-Z0-9_.-]+(?:\.[a-zA-Z]{2,})+(?:/\S*)?", lambda m: m.group().replace("https://", "").replace("http://", "").replace(".", " डॉट "), text, flags=re.IGNORECASE)
+
+    # 3. Normalize Email
     def _replace_email(m):
         domain = m.group(2).replace(".", " डॉट ")
         user = m.group(1).replace("indiawallsofficial", "इंडिया वाल्स ऑफिशियल")
@@ -51,7 +56,7 @@ def normalize_text_for_hindi_tts(text: str) -> str:
 
     text = re.sub(r"([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)", _replace_email, text)
 
-    # 3. Normalize 10-digit phone numbers
+    # 4. Normalize 10-digit phone numbers
     def _replace_phone(match):
         digits = re.sub(r"\D", "", match.group())
         if len(digits) == 12 and digits.startswith("91"):
@@ -70,8 +75,10 @@ def normalize_text_for_hindi_tts(text: str) -> str:
     # 5. Normalize slash as "प्रति" (e.g., रुपये/फीट -> रुपये प्रति फीट)
     text = re.sub(r"([a-zA-Z\u0900-\u097F]+)/([a-zA-Z\u0900-\u097F]+)", r"\1 प्रति \2", text)
 
-    # 6. Normalize trailing / duplicate punctuation marks (e.g., "??" -> "?", "..." -> "।")
+    # 6. Normalize trailing / duplicate punctuation marks and sentence-ending periods
     text = re.sub(r"\.{2,}", "।", text)
+    text = re.sub(r"\.\s+", "। ", text)
+    text = re.sub(r"\.$", "।", text)
     text = re.sub(r"[?!]{2,}", "?", text)
     text = re.sub(r"\s+", " ", text).strip()
 

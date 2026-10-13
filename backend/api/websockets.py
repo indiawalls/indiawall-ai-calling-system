@@ -11,7 +11,6 @@ import uuid
 from fastapi import APIRouter, Request, Response, WebSocket
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
-from pipecat.frames.frames import TTSAudioRawFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -38,6 +37,7 @@ from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from backend.config import (
     GROQ_API_KEY,
     GROQ_STT_MODEL,
+    INTERRUPT_THRESHOLD,
     KOKORO_MODE,
     KOKORO_TTS_URL,
     KOKORO_TTS_VOICE,
@@ -45,6 +45,10 @@ from backend.config import (
     SHERPA_MODEL_DIR,
     SHERPA_NUM_THREADS,
     STT_BACKEND,
+    VAD_CONFIDENCE,
+    VAD_MIN_VOLUME,
+    VAD_START_SECS,
+    VAD_STOP_SECS,
     WS_HOST,
     WS_PORT,
 )
@@ -59,7 +63,6 @@ from backend.telephony import (
     RawAudioFrameSerializer,
     SmartNoiseAndEchoFilter,
 )
-from backend.telephony.filler import get_filler_audio_16k, get_filler_audio_24k
 
 logger = logging.getLogger("hindi-ai-calling.api.ws")
 
@@ -102,22 +105,21 @@ async def websocket_browser_endpoint(websocket: WebSocket):
     )
 
     # Smart Noise Gate & Echo Shield Pre-Filter:
-    # 1. Noise gate silences mic hiss / fan background noise < 0.008
-    # 2. While bot speaks, speaker echo is blocked; loud barge-in commands (>= 0.32) pass through
+    # 1. Noise gate silences mic hiss / fan background noise < NOISE_GATE_THRESHOLD
+    # 2. While bot speaks, speaker echo is blocked; loud close-to-mic barge-in commands (>= INTERRUPT_THRESHOLD) pass through
     noise_filter = SmartNoiseAndEchoFilter(
-        noise_gate_threshold=0.008,
-        interrupt_threshold=0.25,
+        interrupt_threshold=INTERRUPT_THRESHOLD,
         echo_tail_secs=0.35,
     )
 
-    # Silero VAD – High sensitivity for natural conversational speech with live stream logging
+    # Silero VAD – High threshold rejects background noise/chatter and low volume; clear close-up voice triggers
     vad_analyzer = DebugSileroVADAnalyzer(
         sample_rate=16000,
         params=VADParams(
-            start_secs=0.15,   # 150ms speech needed
-            stop_secs=0.35,    # 350ms natural conversational pause tolerance
-            confidence=0.35,   # Neural speech confidence (high sensitivity for natural mic voice)
-            min_volume=0.0,    # Fully rely on Silero neural network to classify human voice
+            start_secs=VAD_START_SECS,   # 250ms sustained speech needed (rejects transients & taps)
+            stop_secs=VAD_STOP_SECS,     # 450ms natural conversational pause tolerance
+            confidence=VAD_CONFIDENCE,   # 0.70 neural speech confidence (rejects surrounding noise & murmurs)
+            min_volume=VAD_MIN_VOLUME,   # 0.60 requires close-up speech loudness; slow/distant volume rejected
         ),
         label="Browser Mic",
     )
@@ -139,13 +141,14 @@ async def websocket_browser_endpoint(websocket: WebSocket):
             ),
         )
 
-    # LLM & TTS (low temperature for focused responses, 160 tokens for 30-45 word helpful answers)
-    llm = create_pipecat_llm_service(INDIAWALLS_SYSTEM_PROMPT, temperature=0.3, max_tokens=160)
+    # LLM & TTS (low temperature for focused responses, 280 tokens for complete product details)
+    llm = create_pipecat_llm_service(INDIAWALLS_SYSTEM_PROMPT, temperature=0.3, max_tokens=280)
     tts = KokoroTTSService(
         mode=KOKORO_MODE,
         base_url=KOKORO_TTS_URL,
         voice=KOKORO_TTS_VOICE,
         sample_rate=24000,
+        echo_shield=noise_filter.echo_shield,
     )
 
     # Context & Aggregators
@@ -184,15 +187,6 @@ async def websocket_browser_endpoint(websocket: WebSocket):
         logger.info(f"User transcript: '{message.content}'")
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="user", content=message.content.strip())
-            filler = get_filler_audio_24k()
-            if filler:
-                try:
-                    logger.info("Playing instant acknowledgment filler 'जी सर,' to web client (<200ms latency mask)")
-                    await transport.output().send_audio(
-                        TTSAudioRawFrame(audio=filler, sample_rate=24000, num_channels=1)
-                    )
-                except Exception as ex:
-                    logger.warning(f"Could not send web filler audio: {ex}")
         try:
             await websocket.send_text(json.dumps({
                 "type": "transcript",
@@ -314,14 +308,20 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
         ),
     )
 
-    # Silero VAD – High sensitivity for telephony audio with live stream logging
+    # Acoustic echo & noise filter for phone stream
+    noise_filter = SmartNoiseAndEchoFilter(
+        interrupt_threshold=INTERRUPT_THRESHOLD,
+        echo_tail_secs=0.35,
+    )
+
+    # Silero VAD – High threshold rejects background phone noise; close-to-phone loud speech triggers
     vad_analyzer = DebugSileroVADAnalyzer(
         sample_rate=16000,
         params=VADParams(
-            start_secs=0.15,   # 150ms speech needed
-            stop_secs=0.35,    # 350ms natural phone pause tolerance
-            confidence=0.35,   # Neural speech confidence (high sensitivity for phone voice)
-            min_volume=0.0,    # Fully rely on Silero neural network to classify human voice
+            start_secs=VAD_START_SECS,
+            stop_secs=VAD_STOP_SECS,
+            confidence=VAD_CONFIDENCE,
+            min_volume=VAD_MIN_VOLUME,
         ),
         label="Exotel Phone",
     )
@@ -342,12 +342,13 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
             ),
         )
 
-    llm = create_pipecat_llm_service(INDIAWALLS_SYSTEM_PROMPT, temperature=0.3, max_tokens=160)
+    llm = create_pipecat_llm_service(INDIAWALLS_SYSTEM_PROMPT, temperature=0.3, max_tokens=280)
     tts = KokoroTTSService(
         mode=KOKORO_MODE,
         base_url=KOKORO_TTS_URL,
         voice=KOKORO_TTS_VOICE,
         sample_rate=16000,
+        echo_shield=noise_filter.echo_shield,
     )
 
     context = LLMContext()
@@ -374,39 +375,32 @@ async def exotel_websocket_endpoint(websocket: WebSocket):
     @user_aggregator.event_handler("on_user_turn_started")
     async def on_exotel_user_turn_started(aggregator, strategy):
         logger.info(f"Exotel caller started speaking ({strategy.__class__.__name__}) -> barge-in triggered")
+        noise_filter.set_bot_speaking(False)
+        noise_filter.echo_shield.reset()
 
     @user_aggregator.event_handler("on_user_turn_stopped")
     async def on_exotel_user_transcript(aggregator, strategy, message):
         logger.info(f"Exotel Phone Caller: '{message.content}'")
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="user", content=message.content.strip())
-            filler = get_filler_audio_16k()
-            if filler:
-                try:
-                    logger.info(f"Playing instant acknowledgment filler 'जी सर,' to phone caller (<200ms latency mask, {len(filler)} bytes)")
-                    await transport.output().send_audio(
-                        TTSAudioRawFrame(
-                            audio=filler,
-                            sample_rate=16000,
-                            num_channels=1,
-                        )
-                    )
-                except Exception as ex:
-                    logger.warning(f"Could not send phone filler audio: {ex}")
 
     @assistant_aggregator.event_handler("on_assistant_turn_started")
     async def on_exotel_assistant_turn_started(aggregator):
         logger.debug("Exotel AI speech started")
+        noise_filter.set_bot_speaking(True)
 
     @assistant_aggregator.event_handler("on_assistant_turn_stopped")
     async def on_exotel_ai_transcript(aggregator, message):
         logger.info(f"Exotel AI Speech: '{message.content}'")
+        # Note: Do not disarm noise_filter here; the echo shield must stay active until
+        # actual audio output playback finishes via BotStoppedSpeakingFrame.
         if message.content and message.content.strip():
             db.add_call_message(call_id=call_id, role="assistant", content=message.content.strip())
 
     pipeline = Pipeline(
         [
             transport.input(),
+            noise_filter,
             vad,
             stt,
             user_aggregator,

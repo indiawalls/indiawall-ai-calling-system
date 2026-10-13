@@ -207,7 +207,7 @@ async def test_pipeline_query(req: PipelineTestRequest):
                         config=types.GenerateContentConfig(
                             system_instruction=INDIAWALLS_SYSTEM_PROMPT,
                             temperature=0.2,
-                            max_output_tokens=140,
+                            max_output_tokens=280,
                         ),
                     )
                     gemini_rotator.record_usage(active_key)
@@ -234,7 +234,7 @@ async def test_pipeline_query(req: PipelineTestRequest):
                         {"role": "system", "content": INDIAWALLS_SYSTEM_PROMPT},
                         {"role": "user", "content": user_text},
                     ],
-                    max_completion_tokens=140,
+                    max_completion_tokens=280,
                     temperature=0.2,
                 ),
             )

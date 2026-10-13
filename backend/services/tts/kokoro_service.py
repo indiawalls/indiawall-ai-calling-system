@@ -6,18 +6,29 @@ Supports in-process streaming and remote HTTP API modes with volume boost.
 import asyncio
 import logging
 import os
+import re
 import threading
+import time
 from typing import AsyncGenerator, Optional
 
 import aiohttp
 import numpy as np
 import torch
 
-from pipecat.frames.frames import ErrorFrame, Frame, TTSAudioRawFrame
+from pipecat.frames.frames import (
+    CancelFrame,
+    ErrorFrame,
+    Frame,
+    InterruptionFrame,
+    LLMFullResponseStartFrame,
+    TTSAudioRawFrame,
+)
+from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.tts_service import TTSService, TTSSettings
 from pipecat.transcriptions.language import Language
 
 from backend.config import KOKORO_MODE, KOKORO_TTS_SPEED, KOKORO_TTS_URL, KOKORO_TTS_VOICE
+from backend.telephony.filler import get_filler_audio_16k, get_filler_audio_24k
 from .normalizer import normalize_text_for_hindi_tts
 
 logger = logging.getLogger("hindi-ai-calling.tts")
@@ -67,6 +78,7 @@ class KokoroTTSService(TTSService):
         voice: str = KOKORO_TTS_VOICE,
         sample_rate: int = 24000,
         settings: Optional[TTSSettings] = None,
+        echo_shield = None,
         **kwargs,
     ):
         default_settings = TTSSettings(
@@ -88,11 +100,48 @@ class KokoroTTSService(TTSService):
         self._base_url = base_url.rstrip("/")
         self._voice = voice
         self._sample_rate = sample_rate
+        self._sent_filler_for_turn = False
+        self._echo_shield = echo_shield
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        # A new LLM response turn starts: re-enable filler for the very first sentence
+        if isinstance(frame, (LLMFullResponseStartFrame, InterruptionFrame, CancelFrame)):
+            self._sent_filler_for_turn = False
+        await super().process_frame(frame, direction)
 
     async def run_tts(self, text: str, context_id: str) -> AsyncGenerator[Frame, None]:
         clean_text = normalize_text_for_hindi_tts(text.strip())
         if not clean_text:
             return
+
+        # Strip redundant leading acknowledgment from synthesized text
+        stripped = re.sub(
+            r"^(जी\s*सर[,।]?\s*|जी\s*मैम[,।]?\s*|जी\s*हाँ[,।]?\s*|जी[,।]?\s*)",
+            "",
+            clean_text,
+            flags=re.IGNORECASE,
+        ).strip()
+        if stripped:
+            clean_text = stripped
+
+        # Send instant filler ONLY ONCE per turn (strictly on the very first sentence of the response)
+        is_first_sentence_of_turn = not self._sent_filler_for_turn
+        is_exit_or_greeting = bool(re.search(r"^(नमस्ते|नमस्कार|धन्यवाद|अलविदा|बाय)", clean_text))
+
+        if is_first_sentence_of_turn:
+            self._sent_filler_for_turn = True
+            if not is_exit_or_greeting:
+                filler_audio = get_filler_audio_16k() if self._sample_rate == 16000 else get_filler_audio_24k()
+                if filler_audio:
+                    if self._echo_shield:
+                        self._echo_shield.record_playback(len(filler_audio) / (self._sample_rate * 2))
+                    logger.info(f"KokoroTTS: Emitting opening instant acknowledgment 'जी सर,' ({len(filler_audio)} bytes)")
+                    yield TTSAudioRawFrame(
+                        audio=filler_audio,
+                        sample_rate=self._sample_rate,
+                        num_channels=1,
+                        context_id=context_id,
+                    )
 
         logger.info(f"KokoroTTS synthesis ({self._mode}): '{clean_text[:40]}' (voice={self._voice})")
 
@@ -112,7 +161,7 @@ class KokoroTTSService(TTSService):
                                 clean_text,
                                 voice=voice_data,
                                 speed=KOKORO_TTS_SPEED,
-                                split_pattern=r"[।!?.,\n]+",
+                                split_pattern=r"[।!?\n]+",
                             ):
                                 if stop_event.is_set():
                                     break
@@ -165,6 +214,8 @@ class KokoroTTSService(TTSService):
                         if isinstance(item, Exception):
                             yield ErrorFrame(error=f"Kokoro TTS error: {item}")
                             break
+                        if self._echo_shield and isinstance(item, (bytes, bytearray)):
+                            self._echo_shield.record_playback(len(item) / (self._sample_rate * 2))
                         yield TTSAudioRawFrame(
                             audio=item,
                             sample_rate=self._sample_rate,
@@ -209,6 +260,8 @@ class KokoroTTSService(TTSService):
                         if usable_len > 0:
                             audio_frame = bytes(buffer[:usable_len])
                             del buffer[:usable_len]
+                            if self._echo_shield:
+                                self._echo_shield.record_playback(len(audio_frame) / (self._sample_rate * 2))
                             yield TTSAudioRawFrame(
                                 audio=audio_frame,
                                 sample_rate=self._sample_rate,
@@ -218,8 +271,11 @@ class KokoroTTSService(TTSService):
 
                     if len(buffer) >= 2:
                         usable_len = (len(buffer) // 2) * 2
+                        audio_frame = bytes(buffer[:usable_len])
+                        if self._echo_shield:
+                            self._echo_shield.record_playback(len(audio_frame) / (self._sample_rate * 2))
                         yield TTSAudioRawFrame(
-                            audio=bytes(buffer[:usable_len]),
+                            audio=audio_frame,
                             sample_rate=self._sample_rate,
                             num_channels=1,
                             context_id=context_id,

@@ -55,3 +55,10 @@ ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin").strip()
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123").strip()
 JWT_SECRET = os.environ.get("JWT_SECRET", "indiawalls-secure-auth-secret-key").strip()
 
+# VAD & Acoustic Gating Settings (Tuned for responsive phone barge-in & noise rejection)
+VAD_CONFIDENCE = float(os.environ.get("VAD_CONFIDENCE", "0.45"))
+VAD_MIN_VOLUME = float(os.environ.get("VAD_MIN_VOLUME", "0.02"))
+VAD_START_SECS = float(os.environ.get("VAD_START_SECS", "0.16"))
+VAD_STOP_SECS = float(os.environ.get("VAD_STOP_SECS", "0.40"))
+INTERRUPT_THRESHOLD = float(os.environ.get("INTERRUPT_THRESHOLD", "0.08"))
+

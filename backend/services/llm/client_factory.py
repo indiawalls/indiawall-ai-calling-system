@@ -41,7 +41,7 @@ def get_groq_client() -> Optional[Groq]:
     return None
 
 
-def create_pipecat_llm_service(system_prompt: str, temperature: float = 0.3, max_tokens: int = 160):
+def create_pipecat_llm_service(system_prompt: str, temperature: float = 0.3, max_tokens: int = 280):
     """
     Create Pipecat LLM service.
     If Groq is enabled (or hybrid): Uses Groq (qwen/qwen3.8-27b, ~150-200ms TTFT) as primary,

@@ -65,12 +65,12 @@ def main():
         if KOKORO_MODE == "inproc"
         else f"REMOTE ({KOKORO_TTS_URL})"
     )
+    k_count = gemini_rotator.total_keys
+    rot_label = f"{k_count} key(s) rotating" if k_count > 1 else f"{k_count} key"
     if LLM_BACKEND == "gemini":
-        k_count = gemini_rotator.total_keys
-        rot_label = f"{k_count} key(s) rotating" if k_count > 1 else f"{k_count} active key"
         llm_info = f"Gemini ({GEMINI_MODEL}, {rot_label})"
     else:
-        llm_info = f"Groq ({GROQ_LLM_MODEL})"
+        llm_info = f"Groq LPU ({GROQ_LLM_MODEL}) + Gemini Fallback ({GEMINI_MODEL}, {rot_label})"
     # 1. Verify Supabase Cloud connection & auto-seed if empty
     seed_report = db.verify_and_seed_database()
     supa_st = seed_report.get("supabase_status", "Checking...")

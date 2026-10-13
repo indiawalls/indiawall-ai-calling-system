@@ -2842,7 +2842,7 @@
             const now = audioCtx.currentTime;
             // Seamless scheduling: chain directly onto previous chunk's exact sample end
             if (scheduledAudioTime < now) {
-                scheduledAudioTime = now + 0.02; // Minimal 20ms jitter buffer
+                scheduledAudioTime = now + 0.05; // 50ms smooth jitter buffer
             }
 
             src.start(scheduledAudioTime);
@@ -2855,7 +2855,7 @@
             src.onended = () => {
                 const idx = activeAudioSources.indexOf(src);
                 if (idx !== -1) activeAudioSources.splice(idx, 1);
-                if (activeAudioSources.length === 0 && audioCtx.currentTime >= scheduledAudioTime) {
+                if (activeAudioSources.length === 0) {
                     isPlaying = false;
                     currentAudioSource = null;
                     scheduledAudioTime = 0;
@@ -2973,34 +2973,43 @@
 
                     const bufferSize = 2048;
                     procNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+                    window.procNode = procNode; // Prevent V8 garbage collection
                     sourceNode.connect(procNode);
-                    // Do NOT connect proc to destination to prevent mic feedback loop
                     muteGainNode = audioCtx.createGain();
-                    muteGainNode.gain.value = 0;
+                    muteGainNode.gain.value = 1e-6; // Non-zero keeps Chromium audio pull active continuously, inaudible at -120dB
                     procNode.connect(muteGainNode);
                     muteGainNode.connect(audioCtx.destination);
 
+                    window.audioCtx = audioCtx;
+                    window.sourceNode = sourceNode;
+                    window.procNode = procNode;
+                    window.muteGainNode = muteGainNode;
+
+                    let pcmPacketsSent = 0;
                     procNode.onaudioprocess = (e) => {
                         if (!isCallActive || !ws || ws.readyState !== WebSocket.OPEN) return;
                         const inputChannel = e.inputBuffer.getChannelData(0);
 
-                        // Smart Acoustic Echo Shield:
-                        // While AI is actively speaking out of the user's speakers (isPlaying === true),
-                        // filter out laptop speaker feedback so AI speech is NEVER cut off by its own voice.
-                        // Only pass through intentional loud commands (barge-in RMS >= 0.12).
+                        // If AI audio is currently playing:
+                        // Only allow barge-in if voice is loud/close to mic (RMS >= 0.10).
+                        // If volume is low/slow or ambient room noise, do not interrupt playback.
                         if (isPlaying) {
-                            let sum = 0;
+                            let sumSq = 0;
                             for (let i = 0; i < inputChannel.length; i++) {
-                                sum += inputChannel[i] * inputChannel[i];
+                                sumSq += inputChannel[i] * inputChannel[i];
                             }
-                            const rms = Math.sqrt(sum / inputChannel.length);
-                            if (rms < 0.12) {
-                                return; // Suppress speaker feedback
+                            const rms = Math.sqrt(sumSq / inputChannel.length);
+                            if (rms < 0.10) {
+                                return;
                             }
                         }
 
                         const pcmBuffer = downsampleTo16k(inputChannel, actualRate);
                         ws.send(pcmBuffer);
+                        pcmPacketsSent++;
+                        if (pcmPacketsSent === 1) {
+                            console.log(`🎤 Mic live! Transmitted first 16kHz PCM audio chunk (${pcmBuffer.byteLength} bytes)`);
+                        }
                     };
 
                     isCallActive = true;
