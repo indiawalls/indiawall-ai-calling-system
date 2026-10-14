@@ -31,16 +31,12 @@ class GroqKeyRotator:
             raw_multi = os.environ.get("GROQ_API_KEYS", "").strip()
             raw_single = os.environ.get("GROQ_API_KEY", "").strip()
 
+            combined = f"{raw_multi},{raw_single}" if (raw_multi and raw_single) else (raw_multi or raw_single)
             keys = []
-            if raw_multi:
-                for k in raw_multi.split(","):
-                    clean = k.strip().strip("'\"").strip()
-                    if clean and not clean.startswith("your-"):
-                        keys.append(clean)
-            elif raw_single:
-                clean = raw_single.strip().strip("'\"").strip()
-                if clean and not clean.startswith("your-"):
-                    keys = [clean]
+            for k in combined.split(","):
+                clean = k.strip().strip("'\"").strip()
+                if clean and not clean.startswith("your-") and clean not in keys:
+                    keys.append(clean)
 
             self._keys = keys
             self._index = 0
