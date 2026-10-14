@@ -55,6 +55,12 @@ def get_kokoro_pipeline():
     global _KOKORO_PIPELINE
     if _KOKORO_PIPELINE is None:
         logger.info("Initializing in-process Kokoro TTS pipeline (lang='h')...")
+        try:
+            import torch
+            if torch.get_num_threads() > 4:
+                torch.set_num_threads(4)
+        except Exception:
+            pass
         from kokoro import KPipeline
 
         _KOKORO_PIPELINE = KPipeline(lang_code="h")

@@ -44,7 +44,7 @@ KOKORO_TTS_SPEED = float(os.environ.get("KOKORO_TTS_SPEED", "1.15"))
 # Speech-to-Text (STT): "local" (IndicConformer CTC) or "groq" (Whisper)
 STT_BACKEND = os.environ.get("STT_BACKEND", "local").lower()
 SHERPA_MODEL_DIR = str(ROOT_DIR / os.environ.get("SHERPA_MODEL_DIR", "models/indicconformer-hi"))
-SHERPA_NUM_THREADS = int(os.environ.get("SHERPA_NUM_THREADS", "2"))
+SHERPA_NUM_THREADS = int(os.environ.get("SHERPA_NUM_THREADS", "4"))
 
 # Supabase Cloud Database Settings (Primary & Exclusive Database)
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
