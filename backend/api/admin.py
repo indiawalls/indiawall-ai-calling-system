@@ -27,7 +27,7 @@ from backend.services.archive_service import (
     get_archive_file_path,
     list_monthly_archives,
 )
-from backend.services.llm.gemini_rotator import gemini_rotator
+from backend.services.llm import gemini_rotator, groq_rotator
 
 logger = logging.getLogger("hindi-ai-calling.api.admin")
 router = APIRouter(prefix="/api/admin", tags=["Admin Panel"])
@@ -62,12 +62,14 @@ async def get_dashboard_summary(_admin: dict = Depends(require_admin_auth)):
     daily_stats = get_daily_call_stats(days=14)
     latency_stats = get_latency_analytics()
     rotator_status = gemini_rotator.get_status()
+    groq_rotator_status = groq_rotator.get_status()
 
     return {
         "calls": call_stats,
         "daily": daily_stats,
         "latency": latency_stats,
         "rotator": rotator_status,
+        "groq_rotator": groq_rotator_status,
         "timestamp": time.time(),
     }
 
@@ -133,6 +135,51 @@ async def remove_llm_key(key_id: int, _admin: dict = Depends(require_admin_auth)
         "success": True,
         "message": f"Successfully removed key #{key_id}",
         "status": gemini_rotator.get_status(),
+    }
+
+
+# ---------------------------------------------------------
+# Groq Key Rotator Management
+# ---------------------------------------------------------
+
+@router.get("/groq-keys")
+async def list_groq_keys(_admin: dict = Depends(require_admin_auth)):
+    """List all registered Groq keys, active pointer, cooldowns, and request counts."""
+    return groq_rotator.get_status()
+
+
+@router.post("/groq-keys")
+async def add_groq_key(req: AddKeyRequest, _admin: dict = Depends(require_admin_auth)):
+    """Add a new Groq API key dynamically to the rotator pool and persist to .env."""
+    clean = req.key.strip()
+    if not clean.startswith("gsk_") and len(clean) < 15:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Groq API key format. Must be a valid Groq key (typically starts with gsk_).",
+        )
+
+    success = groq_rotator.add_key(clean, persist=True)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to add key to Groq rotator.")
+
+    return {
+        "success": True,
+        "message": f"Successfully added Groq key ending ...{clean[-6:]}",
+        "status": groq_rotator.get_status(),
+    }
+
+
+@router.delete("/groq-keys/{key_id}")
+async def remove_groq_key(key_id: int, _admin: dict = Depends(require_admin_auth)):
+    """Remove a Groq API key by its 1-indexed identifier."""
+    success = groq_rotator.remove_key(key_id, persist=True)
+    if not success:
+        raise HTTPException(status_code=404, detail="Key ID not found in Groq pool.")
+
+    return {
+        "success": True,
+        "message": f"Successfully removed Groq key #{key_id}",
+        "status": groq_rotator.get_status(),
     }
 
 

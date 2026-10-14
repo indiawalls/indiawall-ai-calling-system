@@ -27,7 +27,7 @@ from backend.config import (
     WS_HOST,
     WS_PORT,
 )
-from backend.services.llm import gemini_rotator
+from backend.services.llm import gemini_rotator, groq_rotator
 import backend.database as db
 import logging
 
@@ -65,12 +65,14 @@ def main():
         if KOKORO_MODE == "inproc"
         else f"REMOTE ({KOKORO_TTS_URL})"
     )
-    k_count = gemini_rotator.total_keys
-    rot_label = f"{k_count} key(s) rotating" if k_count > 1 else f"{k_count} key"
+    k_gem_count = gemini_rotator.total_keys
+    k_groq_count = groq_rotator.total_keys
+    gem_rot_label = f"{k_gem_count} key(s) rotating" if k_gem_count > 1 else f"{k_gem_count} key"
+    groq_rot_label = f"{k_groq_count} key(s) rotating" if k_groq_count > 1 else f"{k_groq_count} key"
     if LLM_BACKEND == "gemini":
-        llm_info = f"Gemini ({GEMINI_MODEL}, {rot_label})"
+        llm_info = f"Gemini ({GEMINI_MODEL}, {gem_rot_label})"
     else:
-        llm_info = f"Groq LPU ({GROQ_LLM_MODEL}) + Gemini Fallback ({GEMINI_MODEL}, {rot_label})"
+        llm_info = f"Groq LPU ({GROQ_LLM_MODEL}, {groq_rot_label}) + Gemini Fallback ({GEMINI_MODEL}, {gem_rot_label})"
     # 1. Verify Supabase Cloud connection & auto-seed if empty
     seed_report = db.verify_and_seed_database()
     supa_st = seed_report.get("supabase_status", "Checking...")

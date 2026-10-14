@@ -15,6 +15,7 @@ from backend.config import (
     LLM_BACKEND,
 )
 from .gemini_rotator import gemini_rotator
+from .groq_rotator import groq_rotator
 from .fallback_service import GroqWithGeminiFallbackLLMService
 
 logger = logging.getLogger("hindi-ai-calling.llm.factory")
@@ -34,8 +35,8 @@ def get_gemini_client() -> Tuple[Optional[Any], str]:
 
 
 def get_groq_client() -> Optional[Groq]:
-    """Get or create Groq client dynamically."""
-    key = GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "")
+    """Get or create Groq client dynamically with key rotation."""
+    key = groq_rotator.get_current_key() or GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "")
     if key and not key.startswith("your-"):
         return Groq(api_key=key)
     return None
@@ -63,7 +64,7 @@ def create_pipecat_llm_service(system_prompt: str, temperature: float = 0.3, max
     gemini_service = GoogleLLMService(api_key=active_gemini_key, settings=gemini_settings)
 
     # 2. Check Groq configuration
-    groq_key = GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "")
+    groq_key = groq_rotator.get_next_key() or GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "")
     if LLM_BACKEND in ("groq", "hybrid") and groq_key and not groq_key.startswith("your-"):
         groq_settings = GroqLLMService.Settings(
             model=GROQ_LLM_MODEL,
@@ -71,7 +72,7 @@ def create_pipecat_llm_service(system_prompt: str, temperature: float = 0.3, max
             max_completion_tokens=max_tokens,
         )
         logger.info(
-            f"Created Hybrid LLM service (Primary: Groq {GROQ_LLM_MODEL} | Fallback: Gemini {GEMINI_MODEL})"
+            f"Created Hybrid LLM service (Primary: Groq {GROQ_LLM_MODEL} [key ending ...{groq_key[-6:]}] | Fallback: Gemini {GEMINI_MODEL})"
         )
         return GroqWithGeminiFallbackLLMService(
             groq_api_key=groq_key,

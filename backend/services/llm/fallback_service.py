@@ -15,6 +15,7 @@ from pipecat.services.groq.llm import GroqLLMService
 
 from backend.config import GEMINI_MODEL
 from .gemini_rotator import gemini_rotator
+from .groq_rotator import groq_rotator
 
 logger = logging.getLogger("hindi-ai-calling.llm.fallback")
 
@@ -24,7 +25,8 @@ class GroqWithGeminiFallbackLLMService(GroqLLMService):
     Hybrid LLM Service:
     Executes primary queries using Groq LPU (sub-200ms TTFT).
     If Groq fails due to rate-limiting (429), token exhaustion, or API errors,
-    it seamlessly falls back to Google Gemini with rotating keys without dropping the call.
+    it automatically rotates across available Groq keys, and seamlessly falls
+    back to Google Gemini with rotating keys without dropping the call.
     """
 
     def __init__(
@@ -37,6 +39,7 @@ class GroqWithGeminiFallbackLLMService(GroqLLMService):
         **kwargs,
     ):
         super().__init__(api_key=groq_api_key, settings=groq_settings, **kwargs)
+        self._groq_api_key = groq_api_key
         self._system_prompt = system_prompt
         self._temperature = temperature
         self._max_tokens = max_tokens
@@ -97,18 +100,39 @@ class GroqWithGeminiFallbackLLMService(GroqLLMService):
         self._emitted_text_count = 0
 
         if not self._groq_failed:
-            try:
-                logger.info(f"LLM (Primary: Groq LPU) requesting completion (model={self._settings.model})...")
-                await asyncio.wait_for(super()._process_context(context), timeout=5.0)
-                if self._emitted_text_count > 0:
-                    return
-                logger.warning("Groq returned 0 tokens. Failing over seamlessly to Gemini fallback...")
-            except Exception as groq_err:
-                logger.warning(
-                    f"Groq LLM error, timeout or rate-limit ({groq_err.__class__.__name__}: {groq_err}). "
-                    f"Failing over seamlessly to Gemini fallback (gemini-3.5-flash-lite)..."
-                )
+            max_attempts = max(1, groq_rotator.total_keys)
+            for attempt in range(max_attempts):
+                try:
+                    masked_key = f"...{self._groq_api_key[-6:]}" if len(self._groq_api_key) >= 6 else "key"
+                    logger.info(
+                        f"LLM (Primary: Groq LPU) requesting completion (model={self._settings.model}, key={masked_key})..."
+                    )
+                    await asyncio.wait_for(super()._process_context(context), timeout=5.0)
+                    if self._emitted_text_count > 0:
+                        groq_rotator.record_usage(self._groq_api_key)
+                        return
+                    logger.warning("Groq returned 0 tokens. Checking failover...")
+                except Exception as groq_err:
+                    logger.warning(
+                        f"Groq LLM error, timeout or rate-limit ({groq_err.__class__.__name__}: {groq_err})."
+                    )
+                    groq_rotator.mark_error(groq_err, key=self._groq_api_key)
+                    if groq_rotator.total_keys > 1 and attempt < max_attempts - 1:
+                        next_key = groq_rotator.get_next_key()
+                        if next_key and next_key != self._groq_api_key:
+                            logger.info(
+                                f"Rotating to next Groq key (...{next_key[-6:]}) and retrying query..."
+                            )
+                            self._groq_api_key = next_key
+                            self._api_key = next_key
+                            try:
+                                self._client = self.create_client(api_key=next_key)
+                            except Exception:
+                                pass
+                            continue
+
                 self._groq_failed = True
+                break
 
         # Fallback to Google Gemini using key rotation
         await self._run_gemini_fallback(context)
