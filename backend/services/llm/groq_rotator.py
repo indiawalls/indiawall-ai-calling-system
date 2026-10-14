@@ -33,13 +33,14 @@ class GroqKeyRotator:
 
             keys = []
             if raw_multi:
-                keys = [
-                    k.strip()
-                    for k in raw_multi.split(",")
-                    if k.strip() and not k.strip().startswith("your-")
-                ]
-            elif raw_single and not raw_single.startswith("your-"):
-                keys = [raw_single]
+                for k in raw_multi.split(","):
+                    clean = k.strip().strip("'\"").strip()
+                    if clean and not clean.startswith("your-"):
+                        keys.append(clean)
+            elif raw_single:
+                clean = raw_single.strip().strip("'\"").strip()
+                if clean and not clean.startswith("your-"):
+                    keys = [clean]
 
             self._keys = keys
             self._index = 0
