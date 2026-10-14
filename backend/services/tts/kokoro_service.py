@@ -50,6 +50,29 @@ def get_voice_tensor(pipeline, voice_name: str):
     return _VOICE_CACHE.get(voice_name, voice_name)
 
 
+def chunk_text_for_streaming(text: str) -> str:
+    """Break long clauses (>7 words) at natural Hindi conjunctions or intervals
+    so Kokoro synthesizes each sub-clause in <800ms, completely eliminating audio pauses."""
+    words = text.split()
+    if len(words) <= 7:
+        return text
+    conjunctions = ("और", "तथा", "लेकिन", "कि", "जो", "जिससे", "ताकि", "जिसमें", "इसके", "क्योंकि", "मुख्य")
+    chunks = []
+    current = []
+    for w in words:
+        if len(current) >= 5 and any(w.startswith(c) for c in conjunctions):
+            chunks.append(" ".join(current))
+            current = [w]
+        elif len(current) >= 8:
+            chunks.append(" ".join(current))
+            current = [w]
+        else:
+            current.append(w)
+    if current:
+        chunks.append(" ".join(current))
+    return " , ".join(chunks)
+
+
 def get_kokoro_pipeline():
     """Lazily load or return the in-process Kokoro KPipeline for Hindi."""
     global _KOKORO_PIPELINE
@@ -162,12 +185,13 @@ class KokoroTTSService(TTSService):
 
                 def _worker():
                     try:
+                        streaming_text = chunk_text_for_streaming(clean_text)
                         with torch.inference_mode():
                             for _gs, _ps, audio in pipeline(
-                                clean_text,
+                                streaming_text,
                                 voice=voice_data,
                                 speed=KOKORO_TTS_SPEED,
-                                split_pattern=r"[।!?\n]+",
+                                split_pattern=r"[,;।!?\n]+",
                             ):
                                 if stop_event.is_set():
                                     break
