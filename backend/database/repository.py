@@ -5,6 +5,7 @@ Exclusively powered by Supabase Cloud PostgreSQL.
 
 from datetime import datetime, timedelta
 import logging
+import time
 from typing import Any, Dict, List, Optional
 
 from .connection import get_supabase_client, is_supabase_enabled
@@ -166,8 +167,17 @@ def end_call(call_id: str, status: str = "completed"):
             logger.error(f"Supabase error ending call {call_id}: {e}")
 
 
+_last_cleanup_time: float = 0.0
+
+
 def cleanup_stale_calls(max_idle_seconds: int = 120):
-    """Mark abandoned calls as 'completed' in Supabase."""
+    """Mark abandoned calls as 'completed' in Supabase (throttled to at most once per minute)."""
+    global _last_cleanup_time
+    now_ts = time.time()
+    if now_ts - _last_cleanup_time < 60.0:
+        return
+    _last_cleanup_time = now_ts
+
     client = get_supabase_client()
     if not client or not check_supabase_schema():
         return
@@ -207,7 +217,7 @@ def cleanup_stale_calls(max_idle_seconds: int = 120):
 
 
 def get_calls_history(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
-    """Retrieve recent calls with message previews exclusively from Supabase."""
+    """Retrieve recent calls exclusively from Supabase in a single fast indexed query."""
     cleanup_stale_calls(max_idle_seconds=120)
     client = get_supabase_client()
 
@@ -222,25 +232,7 @@ def get_calls_history(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
             .range(offset, offset + limit - 1)
             .execute()
         )
-        results = []
-        for call in res.data or []:
-            c = dict(call)
-            msg_res = (
-                client.table("call_messages")
-                .select("content, role")
-                .eq("call_id", c["id"])
-                .order("id", desc=True)
-                .limit(1)
-                .execute()
-            )
-            if msg_res.data:
-                c["last_message"] = msg_res.data[0].get("content", "")
-                c["last_role"] = msg_res.data[0].get("role", "")
-            else:
-                c["last_message"] = ""
-                c["last_role"] = ""
-            results.append(c)
-        return results
+        return res.data or []
     except Exception as e:
         logger.error(f"Supabase error fetching calls history: {e}")
         return []

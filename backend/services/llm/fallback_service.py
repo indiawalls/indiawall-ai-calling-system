@@ -87,6 +87,14 @@ class GroqWithGeminiFallbackLLMService(GroqLLMService):
             else:
                 cleaned.append(dict(msg))
 
+        # Prune conversation history to prevent token explosion & timeouts on long calls (e.g. 20+ turns).
+        # Keep system instructions and the last 14 messages (7 dialogue turns).
+        system_msgs = [m for m in cleaned if m.get("role") == "system"]
+        chat_msgs = [m for m in cleaned if m.get("role") != "system"]
+        if len(chat_msgs) > 14:
+            chat_msgs = chat_msgs[-14:]
+            cleaned = system_msgs + chat_msgs
+
         if cleaned and hasattr(context, "set_messages"):
             context.set_messages(cleaned)
 
@@ -107,7 +115,7 @@ class GroqWithGeminiFallbackLLMService(GroqLLMService):
                     logger.info(
                         f"LLM (Primary: Groq LPU) requesting completion (model={self._settings.model}, key={masked_key})..."
                     )
-                    await asyncio.wait_for(super()._process_context(context), timeout=5.0)
+                    await asyncio.wait_for(super()._process_context(context), timeout=8.0)
                     if self._emitted_text_count > 0:
                         groq_rotator.record_usage(self._groq_api_key)
                         return
@@ -126,9 +134,12 @@ class GroqWithGeminiFallbackLLMService(GroqLLMService):
                             self._groq_api_key = next_key
                             self._api_key = next_key
                             try:
-                                self._client = self.create_client(api_key=next_key)
-                            except Exception:
-                                pass
+                                self._client = self.create_client(
+                                    api_key=next_key,
+                                    base_url="https://api.groq.com/openai/v1",
+                                )
+                            except Exception as client_err:
+                                logger.error(f"Failed to recreate Groq client for key ...{next_key[-6:]}: {client_err}")
                             continue
 
                 self._groq_failed = True

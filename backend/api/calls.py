@@ -2,6 +2,7 @@
 Call History and System Analytics REST API Router.
 """
 
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 
 import backend.database as db
@@ -13,15 +14,15 @@ router = APIRouter(prefix="/api", tags=["Calls & History"])
 
 @router.get("/calls")
 async def get_call_history(limit: int = 50, offset: int = 0, _admin: dict = Depends(require_admin_auth)):
-    """Fetch past caller history with timestamps, durations, turn counts, and channels."""
-    calls = db.get_calls_history(limit=limit, offset=offset)
+    """Fetch past caller history with timestamps, durations, turn counts, and channels asynchronously."""
+    calls = await asyncio.to_thread(db.get_calls_history, limit=limit, offset=offset)
     return {"calls": calls, "count": len(calls)}
 
 
 @router.get("/calls/{call_id}")
 async def get_call_record(call_id: str, _admin: dict = Depends(require_admin_auth)):
-    """Fetch full transcript messages and metadata for a specific call session."""
-    call = db.get_call_details(call_id)
+    """Fetch full transcript messages and metadata for a specific call session asynchronously."""
+    call = await asyncio.to_thread(db.get_call_details, call_id)
     if not call:
         raise HTTPException(status_code=404, detail="Call record not found")
     return call
@@ -30,7 +31,7 @@ async def get_call_record(call_id: str, _admin: dict = Depends(require_admin_aut
 @router.get("/stats")
 async def get_system_stats(_admin: dict = Depends(require_admin_auth)):
     """Return dashboard analytics including total calls, durations, and Gemini key rotation status."""
-    call_stats = db.get_call_stats()
+    call_stats = await asyncio.to_thread(db.get_call_stats)
     rotator_status = gemini_rotator.get_status()
     return {
         "calls": call_stats,

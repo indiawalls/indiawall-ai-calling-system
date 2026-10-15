@@ -7,6 +7,7 @@ Handles:
 - Monthly Archive Lifecycle, CSV File Downloads & Cleanup
 """
 
+import asyncio
 import logging
 import time
 from typing import Any, Dict, List, Optional
@@ -57,10 +58,12 @@ class RolloverRequest(BaseModel):
 
 @router.get("/dashboard-summary")
 async def get_dashboard_summary(_admin: dict = Depends(require_admin_auth)):
-    """Comprehensive executive analytics for the Admin Panel."""
-    call_stats = get_call_stats()
-    daily_stats = get_daily_call_stats(days=14)
-    latency_stats = get_latency_analytics()
+    """Comprehensive executive analytics for the Admin Panel loaded asynchronously in parallel."""
+    call_stats, daily_stats, latency_stats = await asyncio.gather(
+        asyncio.to_thread(get_call_stats),
+        asyncio.to_thread(get_daily_call_stats, days=14),
+        asyncio.to_thread(get_latency_analytics),
+    )
     rotator_status = gemini_rotator.get_status()
     groq_rotator_status = groq_rotator.get_status()
 
